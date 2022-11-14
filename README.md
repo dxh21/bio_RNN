@@ -1,3 +1,3 @@
 # bio_RNN
 
-IIB Project: Biological Recurrent Neural Networks optiimised for trainability
+IIB Project: Biological Recurrent Neural Networks optimised for trainability
