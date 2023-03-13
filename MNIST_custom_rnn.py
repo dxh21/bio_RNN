@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 
 # Device configuration
-device = torch.device('cpu' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device
 
 from torchvision import datasets
