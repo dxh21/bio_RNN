@@ -4,7 +4,16 @@ import matplotlib.pyplot as plt
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device
+print("Using device:", device)
+
+# get index of currently selected device
+print(torch.cuda.current_device()) # returns 0 in my case
+
+# get number of GPUs available
+print(torch.cuda.device_count()) # returns 1 in my case
+
+# get the name of the device
+print(torch.cuda.get_device_name(0)) # good old Tesla K80
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor

@@ -147,7 +147,7 @@ class STPCell(nn.Module):
             #print("self.X", self.X.size())
             #print("self.ones", self.ones.size())
             #print("h_t", self.h_t.size())
-            a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+            #a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
             #print("a", a)
             #print("a size", a.size())
             self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
@@ -366,7 +366,7 @@ def train(num_epochs, model, loaders):
                     #print(p.size())
                     #print(image.size())
             images = p.clone()     
-            images = images.reshape(-1, sequence_length*4, input_size).to(device)
+            images = images.reshape(-1, 784, input_size).to(device)
             #images = images.reshape(-1, input_size*28*28, input_size).to(device)
             labels = labels.to(device)
             # Forward pass    
