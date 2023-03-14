@@ -5,7 +5,16 @@ import numpy as np
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device
+print("Using device:", device)
+
+# get index of currently selected device
+print(torch.cuda.current_device()) # returns 0 in my case
+
+# get number of GPUs available
+print(torch.cuda.device_count()) # returns 1 in my case
+
+# get the name of the device
+print(torch.cuda.get_device_name(0)) # good old Tesla K80
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor
@@ -41,7 +50,7 @@ import torch.nn.functional as F
 
 sequence_length = 196
 input_size = 4
-hidden_size = 24
+hidden_size = 144
 num_layers = 1
 num_classes = 10
 batch_size = 100
@@ -121,10 +130,10 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
         for name, param in self.named_parameters():
-            print(name, param.size(), param)
+            #print(name, param.size(), param)
             nn.init.uniform_(param, a=-(1/math.sqrt(hidden_size)), b=(1/math.sqrt(hidden_size))) 
 
-    def forward(self, x):                    
+    def forward(self, x):                 
         if self.complexity == "rich":
             if self.h_t.dim() == 3:
                 self.h_t = self.h_t[0]
@@ -147,6 +156,7 @@ class STPCell(nn.Module):
             #print("self.X", self.X.size())
             #print("self.ones", self.ones.size())
             #print("h_t", self.h_t.size())
+            #print("self.U", self.U.size())
             #a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
             #print("a", a)
             #print("a size", a.size())
@@ -157,7 +167,7 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
-            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1).to(device)))
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device)))
 
             # System Equations 
             self.z_h = self.e_h * sigmoid(self.c_h) 
@@ -196,7 +206,7 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
             self.Ucapclone = self.Ucap.clone().detach()
-            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1).to(device)))
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device)))
             # graph plotting 
             '''self.forprintingX.append(self.X[20,5].item())
             self.forprintingU.append(self.U[20,5].item())
@@ -245,12 +255,12 @@ class RNN(nn.Module):
             self.lstm.stpcell.h_t = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
             self.lstm.stpcell.X = torch.ones(x.size(0), self.hidden_size, self.hidden_size, dtype=torch.float32).to(device)
             #self.lstm.stpcell.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32).to(device)
-            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(self.lstm.stpcell.batch_size, 1, 1)).to(device)
+            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(x.size(0), 1, 1)).to(device)
         if self.lstm.stpcell.complexity == "poor":
             self.lstm.stpcell.h_t = torch.full((self.num_layers, x.size(0), self.hidden_size), 0.9).to(device) 
             self.lstm.stpcell.X = torch.ones(self.hidden_size, x.size(0), dtype=torch.float32).to(device)
             #self.lstm.stpcell.U = torch.full((self.hidden_size, x.size(0)), 0.9, dtype=torch.float32).to(device)
-            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(self.lstm.stpcell.batch_size, 1, 1)).to(device)
+            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(x.size(0), 1, 1)).to(device)
             #torch.full((2, 3), 3.141592)
         '''self.update_number += 1 
         if self.update_number % 50 == 0: 
@@ -344,7 +354,7 @@ def baseindexing(time_gap, input_size, stride, a):
     print(a[(2+baseinds).tolist()])'''
     
     #new_sequence = [item for sublist in new_sequence for item in sublist] 
-
+    new_sequence = np.array(new_sequence)
     new_sequence = torch.tensor(new_sequence, dtype=torch.float).to(device)
     #print("size of new sequence tensor", new_sequence.size())
     return new_sequence
@@ -356,18 +366,7 @@ def train(num_epochs, model, loaders):
     #torch.autograd.set_detect_anomaly(True)
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(loaders['train']):
-            p = torch.rand(batch_size, 1, 784, input_size)
-            for n in range(images.size(dim=0)):         # Use this loop to spiralise the image 
-                for image in images[n,0:1,:,:]: 
-                    spiralimage = spiraliser(28, 28, image)        
-                    indexedimage = baseindexing(3, input_size, 1, spiralimage)  
-                    p[n,0,:,:] = indexedimage
-                    #print(images[2,0:1,0:28,0:28])
-                    #print(p.size())
-                    #print(image.size())
-            images = p.clone()     
-            images = images.reshape(-1, 784, input_size).to(device)
-            #images = images.reshape(-1, input_size*28*28, input_size).to(device)
+            images = images.reshape(-1, sequence_length, input_size).to(device)
             labels = labels.to(device)
             # Forward pass    
             outputs = model(images)
@@ -384,31 +383,87 @@ def train(num_epochs, model, loaders):
         
         pass
     pass
-train(num_epochs, model, loaders)
+
+def trainspiral(num_epochs, model, loaders): 
+        
+    # Train the model
+    total_step = len(loaders['train'])
+    #torch.autograd.set_detect_anomaly(True)
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(loaders['train']):
+            p = torch.rand(batch_size, 1, 784, input_size)
+            for n in range(images.size(dim=0)):         # Use this loop to spiralise the image 
+                for image in images[n,0:1,:,:]: 
+                    spiralimage = spiraliser(28, 28, image)        
+                    indexedimage = baseindexing(3, input_size, 1, spiralimage)  
+                    p[n,0,:,:] = indexedimage
+                    #print(images[2,0:1,0:28,0:28])
+                    #print(p.size())
+                    #print(image.size())
+            images = p.clone() 
+            #images = images.reshape(-1, 784, input_size).to(device)
+            images = images.reshape(-1, sequence_length, input_size).to(device)
+            labels = labels.to(device)
+            # Forward pass    
+            outputs = model(images)
+            loss = loss_func(outputs, labels)
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            if (i+1) % 100 == 0:
+                print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' 
+                       .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))  
+                pass
+        
+        pass
+    pass
+train(num_epochs, model, loaders)    
 
 # Test the model
-model.eval()
-with torch.no_grad():
-    correct = 0
-    total = 0
-    for images, labels in loaders['test']:
+def evaluate(mymodel):
+    mymodel.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in loaders['test']:
+            images = images.reshape(-1, sequence_length, input_size).to(device)
+            labels = labels.to(device)
+            outputs = mymodel(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total = total + labels.size(0)
+            correct = correct + (predicted == labels).sum().item()
+    print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))                  
+    return (100*correct/total)
 
-        #spiral 
-        p = torch.rand(batch_size, 1, 784, input_size)
-        for n in range(images.size(dim=0)):         # Use this loop to spiralise the image 
-            for image in images[n,0:1,:,:]: 
-                spiralimage = spiraliser(28, 28, image)        
-                indexedimage = baseindexing(3, input_size, 1, spiralimage)  
-                p[n,0,:,:] = indexedimage
-        images = p.clone()
+def evaluatespiral(mymodel):
+    mymodel.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in loaders['test']:
 
-        images = images.reshape(-1, sequence_length, input_size).to(device)
-        labels = labels.to(device)
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total = total + labels.size(0)
-        correct = correct + (predicted == labels).sum().item()
-print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))
+            #spiral 
+            p = images.clone()
+            for n in range(images.size(dim=0)):         # Use this loop to spiralise the image 
+                for image in images[n,0:1,:,:]: 
+                    spiralimage = spiraliser(28, 28, image)        
+                    #indexedimage = baseindexing(3, input_size, 1, spiralimage)  
+                    #p[n,0,:,:] = indexedimage
+                    p[n,0,:,:] = spiralimage
+            images = p.clone()
+
+            images = images.reshape(-1, sequence_length, input_size).to(device)
+            labels = labels.to(device)
+            outputs = mymodel(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total = total + labels.size(0)
+            correct = correct + (predicted == labels).sum().item()
+    print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))                  
+    return (100*correct/total)
+
+evaluate(model)
 
 sample = next(iter(loaders['test']))
 imgs, lbls = sample 
