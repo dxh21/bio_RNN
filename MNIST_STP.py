@@ -34,12 +34,12 @@ test_data = datasets.MNIST(
 from torch.utils.data import DataLoader
 loaders = {
     'train' : torch.utils.data.DataLoader(train_data, 
-                                          batch_size=100, 
+                                          batch_size=50, 
                                           shuffle=True, 
                                           num_workers=0),
     
     'test'  : torch.utils.data.DataLoader(test_data, 
-                                          batch_size=100, 
+                                          batch_size=50, 
                                           shuffle=True, 
                                           num_workers=0),
 }
@@ -53,7 +53,7 @@ input_size = 4
 hidden_size = 128
 num_layers = 1
 num_classes = 10
-batch_size = 100
+batch_size = 50
 num_epochs = 2
 learning_rate = 0.01
 
