@@ -50,7 +50,7 @@ import torch.nn.functional as F
 
 sequence_length = 196
 input_size = 4
-hidden_size = 48
+hidden_size = 144
 num_layers = 1
 num_classes = 10
 batch_size = 100
