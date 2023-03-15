@@ -48,8 +48,8 @@ loaders
 from torch import nn
 import torch.nn.functional as F      
 
-sequence_length = 4
-input_size = 196
+sequence_length = 196
+input_size = 4
 hidden_size = 48
 num_layers = 1
 num_classes = 10
