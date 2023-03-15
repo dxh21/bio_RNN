@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np 
 
 # Device configuration
-device = torch.device('cpu' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 
 # get index of currently selected device
