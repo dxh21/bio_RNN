@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np 
 
 # Device configuration
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 
 # get index of currently selected device
@@ -34,12 +34,12 @@ test_data = datasets.MNIST(
 from torch.utils.data import DataLoader
 loaders = {
     'train' : torch.utils.data.DataLoader(train_data, 
-                                          batch_size=50, 
+                                          batch_size=100, 
                                           shuffle=True, 
                                           num_workers=0),
     
     'test'  : torch.utils.data.DataLoader(test_data, 
-                                          batch_size=50, 
+                                          batch_size=100, 
                                           shuffle=True, 
                                           num_workers=0),
 }
@@ -48,12 +48,12 @@ loaders
 from torch import nn
 import torch.nn.functional as F      
 
-sequence_length = 196
-input_size = 4
-hidden_size = 128
+sequence_length = 4
+input_size = 196
+hidden_size = 48
 num_layers = 1
 num_classes = 10
-batch_size = 50
+batch_size = 100
 num_epochs = 2
 learning_rate = 0.01
 
@@ -109,6 +109,8 @@ class STPCell(nn.Module):
             self.delta_t = 1
             self.alpha = alpha
             self.e_ux = self.alpha * self.e_h
+            self.z_min = 0.001
+            self.z_max = 0.1
 
             # Short term Depression parameters  
             self.c_x = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
@@ -125,8 +127,8 @@ class STPCell(nn.Module):
             
             # State initialisations
             self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
-            self.X = torch.ones(self.hidden_size, self.hidden_size, dtype=torch.float32)
-            self.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)
+            self.X = torch.ones(self.hidden_size, 1, dtype=torch.float32)
+            self.U = torch.full((self.hidden_size, 1), 0.9, dtype=torch.float32)   
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
         for name, param in self.named_parameters():
@@ -194,8 +196,9 @@ class STPCell(nn.Module):
             #print("z_x", self.z_x.size())
             #print("self.X", self.X.size())
             #print("self.ones", self.ones.size())
+            #print("self.U", self.U.size())
             #print("h_t", self.h_t.size())
-            #a = self.delta_t * self.U * self.X * self.h_t
+            a = self.delta_t * self.U * self.X * self.h_t
             #print("a", a)
             #print("a size", a.size())
         
@@ -206,7 +209,7 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
             self.Ucapclone = self.Ucap.clone().detach()
-            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.U.size(0), 1, 1).to(device)))
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
             # graph plotting 
             '''self.forprintingX.append(self.X[20,5].item())
             self.forprintingU.append(self.U[20,5].item())
@@ -257,10 +260,10 @@ class RNN(nn.Module):
             #self.lstm.stpcell.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32).to(device)
             self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(x.size(0), 1, 1)).to(device)
         if self.lstm.stpcell.complexity == "poor":
-            self.lstm.stpcell.h_t = torch.full((self.num_layers, x.size(0), self.hidden_size), 0.9).to(device) 
+            self.lstm.stpcell.h_t = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
             self.lstm.stpcell.X = torch.ones(self.hidden_size, x.size(0), dtype=torch.float32).to(device)
             #self.lstm.stpcell.U = torch.full((self.hidden_size, x.size(0)), 0.9, dtype=torch.float32).to(device)
-            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(x.size(0), 1, 1)).to(device)
+            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(1, x.size(0))).to(device)
             #torch.full((2, 3), 3.141592)
         '''self.update_number += 1 
         if self.update_number % 50 == 0: 
@@ -391,12 +394,13 @@ def trainspiral(num_epochs, model, loaders):
     #torch.autograd.set_detect_anomaly(True)
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(loaders['train']):
-            p = torch.rand(batch_size, 1, 784, input_size)
+            #p = torch.rand(batch_size, 1, 784, input_size)
+            p = images.clone()
             for n in range(images.size(dim=0)):         # Use this loop to spiralise the image 
                 for image in images[n,0:1,:,:]: 
                     spiralimage = spiraliser(28, 28, image)        
-                    indexedimage = baseindexing(3, input_size, 1, spiralimage)  
-                    p[n,0,:,:] = indexedimage
+                    #indexedimage = baseindexing(3, input_size, 1, spiralimage)  
+                    p[n,0,:,:] = spiralimage
                     #print(images[2,0:1,0:28,0:28])
                     #print(p.size())
                     #print(image.size())
@@ -419,7 +423,6 @@ def trainspiral(num_epochs, model, loaders):
         
         pass
     pass
-train(num_epochs, model, loaders)    
 
 # Test the model
 def evaluate(mymodel):
@@ -463,7 +466,8 @@ def evaluatespiral(mymodel):
     print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))                  
     return (100*correct/total)
 
-evaluate(model)
+trainspiral(num_epochs, model, loaders)    
+evaluatespiral(model)
 
 sample = next(iter(loaders['test']))
 imgs, lbls = sample 
@@ -481,5 +485,5 @@ for i in range(1, cols * rows + 1):
     figure.add_subplot(rows, cols, i)
     plt.title(predicted[i-1])
     plt.axis("off")
-    plt.imshow(imgs_print[i-1].squeeze(), cmap="gray")
-plt.show()
+    plt.imshow(imgs_print[i-1].squeeze(), cmap="gray")            
+plt.show()     
