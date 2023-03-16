@@ -5,8 +5,8 @@ import numpy as np
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device
-torch.cuda.empty_cache()
+print(device)
+
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 train_data = datasets.MNIST(
@@ -411,7 +411,7 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4]:
-        for timegaps in [2]:
+        for timegaps in [3]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
