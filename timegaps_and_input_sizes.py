@@ -6,7 +6,7 @@ import numpy as np
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device
-
+torch.cuda.empty_cache()
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 train_data = datasets.MNIST(
@@ -326,7 +326,7 @@ def baseindexing(time_gap, input_size, stride, a):
     print(a[(2+baseinds).tolist()])'''
     
     #new_sequence = [item for sublist in new_sequence for item in sublist] 
-
+    new_sequence = np.array(new_sequence)
     new_sequence = torch.tensor(new_sequence, dtype=torch.float).to(device)
     #print("size of new sequence tensor", new_sequence.size())
     return new_sequence
@@ -410,13 +410,15 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [6, 8, 10]:
-        for timegaps in [2,3,4]:
+    for input_sizes in [4]:
+        for timegaps in [2]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
+            FILE = "f'STPMNIST_{input_size}_{timegap}.pth"
+            torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
-            print(biglist)
+            print(biglist) 
