@@ -418,7 +418,7 @@ if __name__ == '__main__':
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = "f'STPMNIST_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
