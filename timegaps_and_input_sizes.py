@@ -396,7 +396,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 24
+    hidden_size = 48
     timegap = 3
     num_layers = 1
     num_classes = 10
@@ -410,15 +410,15 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [16]:
-        for timegaps in [28,40,50]:
+    for input_sizes in [4,8,16]:
+        for timegaps in [2,4,6]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
