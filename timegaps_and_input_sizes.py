@@ -411,7 +411,7 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4,8,16]:
-        for timegaps in [2,4,6]:
+        for timegaps in [28,40]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
