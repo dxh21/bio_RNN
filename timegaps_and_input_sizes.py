@@ -147,7 +147,7 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
-            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1).to(device), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1).to(device)))
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
 
             # System Equations 
             self.z_h = self.e_h * sigmoid(self.c_h) 
@@ -209,7 +209,7 @@ class STPCell(nn.Module):
 class STP(nn.Module):
     def __init__(self, input_size, hidden_size, complexity, e_h, alpha): 
         super(STP, self).__init__()
-        self.stpcell = STPCell(input_size, hidden_size, complexity, e_h, alpha).to(device)
+        self.stpcell = STPCell(input_size, hidden_size, complexity, e_h, alpha)
 
     def forward(self, x):
         for n in range(x.size(1)):
@@ -223,8 +223,8 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1).to(device)
-        self.fc = nn.Linear(hidden_size, num_classes).to(device)
+        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
+        self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
 
@@ -303,7 +303,7 @@ def spiraliser(m, n, a):
             l += 1
         
     spiraltensor = torch.tensor(spiral, dtype=torch.float)
-    spiraltensor = spiraltensor.reshape(28, 28).to(device)
+    spiraltensor = spiraltensor.reshape(28, 28)
     return spiraltensor
 
 def baseindexing(time_gap, input_size, stride, a):
@@ -327,7 +327,7 @@ def baseindexing(time_gap, input_size, stride, a):
     
     #new_sequence = [item for sublist in new_sequence for item in sublist] 
     new_sequence = np.array(new_sequence)
-    new_sequence = torch.tensor(new_sequence, dtype=torch.float).to(device)
+    new_sequence = torch.tensor(new_sequence, dtype=torch.float)
     #print("size of new sequence tensor", new_sequence.size())
     return new_sequence
 
