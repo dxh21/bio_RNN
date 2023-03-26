@@ -396,7 +396,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 48
+    hidden_size = 96
     timegap = 3
     num_layers = 1
     num_classes = 10
@@ -411,7 +411,7 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4,8,16]:
-        for timegaps in [50]:
+        for timegaps in [2,4,6]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
