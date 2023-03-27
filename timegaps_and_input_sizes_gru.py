@@ -462,7 +462,7 @@ if __name__ == '__main__':
         for timegaps in [28, 40, 50]:
             timegap = timegaps
             input_size = input_sizes
-            model = GRU(input_size, hidden_size, num_layers, num_classes).to(device)
+            model = VANILLA(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
