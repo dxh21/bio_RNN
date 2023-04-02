@@ -459,7 +459,7 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4, 8, 16]:
-        for timegaps in [0, 4]:
+        for timegaps in [1, 4]:
             timegap = timegaps
             input_size = input_sizes
             model = VANILLA(input_size, hidden_size, num_layers, num_classes).to(device)
