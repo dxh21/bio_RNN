@@ -2,6 +2,7 @@ import torch
 import math
 import matplotlib.pyplot as plt
 import numpy as np 
+import seaborn as sns
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -110,15 +111,16 @@ class STPCell(nn.Module):
             self.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
+
         for name, param in self.named_parameters():
             #print(name, param.size(), param)
-            nn.init.uniform_(param, a=-(1/math.sqrt(hidden_size)), b=(1/math.sqrt(hidden_size)))
+            nn.init.uniform_(param, a=-(1/math.sqrt(hidden_size)), b=(1/math.sqrt(hidden_size))) 
             if name == "c_x":
                 nn.init.zeros_(param)
             if name == "c_u":
                 nn.init.zeros_(param)
             if name == "c_U":
-                nn.init.zeros_(param) 
+                nn.init.zeros_(param)
 
     def forward(self, x):                    
         if self.complexity == "rich":
@@ -401,9 +403,9 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 28
-    hidden_size = 60
-    timegap = 3
+    input_size = 4
+    hidden_size = 24
+    timegap = 4
     num_layers = 1
     num_classes = 10
     batch_size = 100
@@ -414,17 +416,29 @@ if __name__ == '__main__':
 
     from torch import optim
 
-    biglist = []
+    model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
+    model.load_state_dict(torch.load("STPMNIST_4_4.pth"))
 
-    for input_sizes in [4,8,16]:
-        for timegaps in [2,4,6]:
-            timegap = timegaps
-            input_size = input_sizes
-            model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-            optimizer = optim.Adam(model.parameters(), lr = 0.01)
-            print(model)
-            train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_{hidden_size}_{input_size}_{timegap}.pth"
-            torch.save(model.state_dict(), FILE)
-            biglist.append([input_size, timegap, evaluate(model)])   
-            print(biglist) 
+    def sigmoid(x):
+        for n in x: 
+            for a in n:
+                a = 1 / (1 + math.exp(-a))
+                #return 1 / (1 + math.exp(-x))
+
+    sigmoid = nn.Sigmoid()
+
+    #z_min = model.lstm.stpcell.z_min
+    #z_max = model.lstm.stpcell.z_max
+
+    #c_x = model.lstm.stpcell.c_x.cpu().detach().numpy()
+
+    #z_x = z_min + (z_max - z_min) * sigmoid(c_x)
+
+    z_x = model.lstm.stpcell.z_min + (model.lstm.stpcell.z_max - model.lstm.stpcell.z_min) * sigmoid(model.lstm.stpcell.c_x)
+    z_x = z_x.cpu().detach().numpy()
+    print(z_x)
+
+    ax = sns.heatmap(z_x)
+
+    plt.title("2D Heat map of z_x")
+    plt.show()
