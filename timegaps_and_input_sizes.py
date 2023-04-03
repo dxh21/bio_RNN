@@ -417,14 +417,14 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4,8,16]:
-        for timegaps in [2,4,6]:
+        for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_0initialisation_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
