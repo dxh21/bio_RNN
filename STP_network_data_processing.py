@@ -436,9 +436,37 @@ if __name__ == '__main__':
 
     z_x = model.lstm.stpcell.z_min + (model.lstm.stpcell.z_max - model.lstm.stpcell.z_min) * sigmoid(model.lstm.stpcell.c_x)
     z_x = z_x.cpu().detach().numpy()
-    print(z_x)
 
-    ax = sns.heatmap(z_x)
+    z_u = model.lstm.stpcell.z_min + (model.lstm.stpcell.z_max - model.lstm.stpcell.z_min) * sigmoid(model.lstm.stpcell.c_u)
+    z_u = z_u.cpu().detach().numpy()
 
+    U = 0.9 * sigmoid(model.lstm.stpcell.c_U)
+    U = U.cpu().detach().numpy()
+    
+    print(model.lstm.stpcell.p)
+
+    print(1/z_x)
+    print(1/z_u)
+    print(1/U)
+
+    ax = sns.heatmap(1/z_x)
+    
     plt.title("2D Heat map of z_x")
+    plt.show()
+
+    plt.hist(1/z_x, bins=10)
+    plt.show()
+
+    ax = sns.heatmap(1/z_u)
+    plt.title("2D Heat map of z_u")
+    plt.show()
+
+    plt.hist(1/z_u, bins='auto')
+    plt.show()
+
+    ax = sns.heatmap(1/U)
+    plt.title("2D Heat map of U")
+    plt.show()
+
+    plt.hist(1/U, bins='auto')
     plt.show()
