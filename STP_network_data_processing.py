@@ -445,10 +445,7 @@ if __name__ == '__main__':
     
     print(model.lstm.stpcell.p)
 
-    print(1/z_u)
-
-    ax = sns.heatmap(1/z_x)
-    
+    '''ax = sns.heatmap(1/z_x)
     plt.title("2D Heat map of z_x")
     plt.show()
 
@@ -467,4 +464,9 @@ if __name__ == '__main__':
     plt.show()
 
     plt.hist(1/U, bins="auto")
-    plt.show()
+    plt.show()'''
+
+    plt.scatter(1/z_x, 1/z_u)
+    plt.xlabel("1/z_x")
+    plt.ylabel("1/z_u")
+    plt.show() 
