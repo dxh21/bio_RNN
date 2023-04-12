@@ -119,6 +119,8 @@ class STPCell(nn.Module):
                 nn.init.zeros_(param)
             if name == "c_U":
                 nn.init.zeros_(param) 
+            if name == "c_h":
+                nn.init.zeros_(param)     
 
     def forward(self, x):                    
         if self.complexity == "rich":

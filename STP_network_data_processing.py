@@ -3,6 +3,9 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np 
 import seaborn as sns
+import pandas as pd
+from IPython.display import display
+from mpl_toolkits import mplot3d
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -417,7 +420,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_4_4.pth"))
+    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_16_28.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -442,8 +445,10 @@ if __name__ == '__main__':
 
     U = 0.9 * sigmoid(model.lstm.stpcell.c_U)
     U = U.cpu().detach().numpy()
-    
-    print(model.lstm.stpcell.p)
+
+    tau_x = 1/z_x
+    tau_u = 1/z_u
+    tau_U = 1/U 
 
     '''ax = sns.heatmap(1/z_x)
     plt.title("2D Heat map of z_x")
@@ -466,7 +471,62 @@ if __name__ == '__main__':
     plt.hist(1/U, bins="auto")
     plt.show()'''
 
-    plt.scatter(1/z_x, 1/z_u)
-    plt.xlabel("1/z_x")
-    plt.ylabel("1/z_u")
-    plt.show() 
+    #plt.scatter(1/z_x, 1/z_u)
+    #plt.xlabel("1/z_x")
+    #plt.ylabel("1/z_u")
+    #plt.show() 
+
+    '''dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
+    display(dataset)
+
+    sns.scatterplot(dataset, x='1/z_x', y='1/z_u')
+    plt.xlabel('1/z_x')
+    plt.ylabel('1/z_u')
+    plt.show()
+
+    sns.scatterplot(dataset, x='1/z_x', y='1/U')
+    plt.xlabel('1/z_x')
+    plt.ylabel('1/U')
+    plt.show()
+
+    sns.scatterplot(dataset, x='1/z_u', y='1/U')
+    plt.xlabel('1/z_u')
+    plt.ylabel('1/U')
+    plt.show()
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    x = dataset['1/z_x']
+    y = dataset['1/z_u']
+    z = dataset['1/U']
+    ax.scatter(x,y,z)
+    ax.set_xlabel('1/z_x')
+    ax.set_ylabel('1/z_u')
+    ax.set_zlabel('1/U')
+    plt.show()'''
+
+    p = model.lstm.stpcell.p.cpu().detach().numpy()
+    print(type(p))
+
+    for name, param in model.fc.named_parameters():
+        if name == "weight":
+            linearweights = param.cpu().detach().numpy()
+
+    '''ax = sns.heatmap(p)
+    plt.title("2D Heat map of p")
+    plt.show()
+
+    ax = sns.heatmap(linearweights)
+    plt.title("2D Heat map of weights of linear layer")
+    plt.show()'''
+
+    normp = np.linalg.norm(p, axis=1)
+    print(normp)
+
+    normlinearweights = np.linalg.norm(linearweights, axis=0)
+    print(normlinearweights)
+
+    plt.scatter(normp, normlinearweights)
+    plt.xlabel("Magnitude of input weights")
+    plt.ylabel("Magnitude of output weights")
+    plt.show()
