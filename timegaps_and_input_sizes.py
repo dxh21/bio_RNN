@@ -82,6 +82,7 @@ class STPCell(nn.Module):
             self.U = torch.full((self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)         
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
+
         if self.complexity == "poor":
             # System variables 
             self.e_h = e_h
@@ -90,6 +91,8 @@ class STPCell(nn.Module):
             self.delta_t = 1
             self.alpha = alpha
             self.e_ux = self.alpha * self.e_h
+            self.z_min = 0.001
+            self.z_max = 0.1
 
             # Short term Depression parameters  
             self.c_x = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
@@ -106,13 +109,14 @@ class STPCell(nn.Module):
             
             # State initialisations
             self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
-            self.X = torch.ones(self.hidden_size, self.hidden_size, dtype=torch.float32)
-            self.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)
+            self.X = torch.ones(self.hidden_size, 1, dtype=torch.float32)
+            self.U = torch.full((self.hidden_size, 1), 0.9, dtype=torch.float32)
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
+
         for name, param in self.named_parameters():
             #print(name, param.size(), param)
-            nn.init.uniform_(param, a=-(1/math.sqrt(hidden_size)), b=(1/math.sqrt(hidden_size)))
+            nn.init.uniform_(param, a=-(1/math.sqrt(self.hidden_size)), b=(1/math.sqrt(self.hidden_size)))
             if name == "c_x":
                 nn.init.zeros_(param)
             if name == "c_u":
@@ -120,7 +124,11 @@ class STPCell(nn.Module):
             if name == "c_U":
                 nn.init.zeros_(param) 
             if name == "c_h":
-                nn.init.zeros_(param)     
+                nn.init.zeros_(param)
+            if name == "p":
+                nn.init.uniform_(param, a=-(1/math.sqrt(self.input_size)), b=(1/math.sqrt(self.input_size)))     
+            if name == "b": 
+                nn.init.uniform_(param, a=-1, b=1)
 
     def forward(self, x):                    
         if self.complexity == "rich":
@@ -145,7 +153,7 @@ class STPCell(nn.Module):
             #print("self.X", self.X.size())
             #print("self.ones", self.ones.size())
             #print("h_t", self.h_t.size())
-            a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+            #a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
             #print("a", a)
             #print("a size", a.size())
             self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
@@ -158,7 +166,7 @@ class STPCell(nn.Module):
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
 
             # System Equations 
-            self.z_h = self.e_h * sigmoid(self.c_h) 
+            self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h) 
             #   a = self.w * self.U * self.X
             #print("size of a", a.size())
             #print("size of h_t", self.h_t.size())
@@ -193,13 +201,15 @@ class STPCell(nn.Module):
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
+            self.Ucapclone = self.Ucap.clone().detach()
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
 
             # graph plotting 
-            self.forprintingX.append(self.X[20,5].item())
+            '''self.forprintingX.append(self.X[20,5].item())
             self.forprintingU.append(self.U[20,5].item())
             if len(self.forprintingX) % 140 == 0:
                 self.forprintingX = []
-                self.forprintingU = []
+                self.forprintingU = []'''
 
             # System Equations 
             # self.z_h = self.e_h * sigmoid(self.c_h) 
@@ -231,7 +241,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -244,9 +254,9 @@ class RNN(nn.Module):
             #self.lstm.stpcell.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32).to(device)
             self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(self.lstm.stpcell.batch_size, 1, 1)).to(device)
         if self.lstm.stpcell.complexity == "poor":
-            self.lstm.stpcell.h_t = torch.full((self.num_layers, x.size(0), self.hidden_size), 0.9).to(device) 
+            self.lstm.stpcell.h_t = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
             self.lstm.stpcell.X = torch.ones(self.hidden_size, x.size(0), dtype=torch.float32).to(device)
-            self.lstm.stpcell.U = torch.full((self.hidden_size, x.size(0)), 0.9, dtype=torch.float32).to(device)
+            self.lstm.stpcell.U = (self.lstm.stpcell.Ucapclone.repeat(1, x.size(0))).to(device)
             #torch.full((2, 3), 3.141592)
         '''self.update_number += 1 
         if self.update_number % 50 == 0: 
@@ -404,7 +414,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 48
+    hidden_size = 24
     timegap = 3
     num_layers = 1
     num_classes = 10
