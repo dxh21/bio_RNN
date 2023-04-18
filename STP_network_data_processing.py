@@ -406,7 +406,7 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 4
+    input_size = 8
     hidden_size = 24
     timegap = 4
     num_layers = 1
@@ -420,7 +420,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_16_28.pth"))
+    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_8_4.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -471,10 +471,10 @@ if __name__ == '__main__':
     plt.hist(1/U, bins="auto")
     plt.show()'''
 
-    #plt.scatter(1/z_x, 1/z_u)
-    #plt.xlabel("1/z_x")
-    #plt.ylabel("1/z_u")
-    #plt.show() 
+    '''plt.scatter(1/z_x, 1/z_u)
+    plt.xlabel("1/z_x")
+    plt.ylabel("1/z_u")
+    plt.show()'''
 
     '''dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
     display(dataset)

@@ -241,7 +241,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
