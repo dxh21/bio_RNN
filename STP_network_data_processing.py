@@ -406,7 +406,7 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 8
+    input_size = 16
     hidden_size = 24
     timegap = 4
     num_layers = 1
@@ -420,7 +420,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_8_4.pth"))
+    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_16_4.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -446,6 +446,9 @@ if __name__ == '__main__':
     U = 0.9 * sigmoid(model.lstm.stpcell.c_U)
     U = U.cpu().detach().numpy()
 
+    w = model.lstm.stpcell.w 
+    w = w.cpu().detach().numpy()
+
     tau_x = 1/z_x
     tau_u = 1/z_u
     tau_U = 1/U 
@@ -469,7 +472,28 @@ if __name__ == '__main__':
     plt.show()
 
     plt.hist(1/U, bins="auto")
+    plt.show()
+
+    ax = sns.heatmap(w)
+    plt.title("Heat map of w")
     plt.show()'''
+    ax = sns.heatmap(1/z_u)
+    plt.title("2D Heat map of z_u")
+    plt.show()
+
+    neuron_output_u = np.sum(1/z_u, axis=0) 
+    neuron_input_u = np.sum(1/z_u, axis=1)
+    plt.plot(neuron_output_u)
+    plt.plot(neuron_input_u)
+    plt.legend(["axis=0", "axis=1"])
+    print(sum(neuron_input_u/hidden_size))
+    print(sum(neuron_output_u/hidden_size))
+    plt.show()
+
+    plt.scatter(w, 1/z_u)
+    plt.xlabel("w")
+    plt.ylabel("1/z_u")
+    plt.show()
 
     '''plt.scatter(1/z_x, 1/z_u)
     plt.xlabel("1/z_x")
