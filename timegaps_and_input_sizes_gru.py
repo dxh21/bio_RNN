@@ -305,6 +305,75 @@ class VANILLA(nn.Module):
         pass                                    
 pass
 
+class trainableZCell(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers):
+        super(trainableZCell, self).__init__()
+        self.hidden_size = hidden_size
+        # Update gate z_t
+        self.w_z = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+        self.p_z = torch.nn.Parameter(torch.rand(self.hidden_size, input_size))              
+        self.b_z = torch.nn.Parameter(torch.rand(self.hidden_size, 1))  
+
+        # outputs
+        self.w = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+        self.p = torch.nn.Parameter(torch.rand(self.hidden_size, input_size))
+        self.b = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+
+        # hidden state initialisation 
+        self.h_t = (torch.zeros(1, self.hidden_size, dtype=torch.float32))
+
+        for name, param in self.named_parameters():
+            nn.init.uniform_(param, a=-(1/math.sqrt(hidden_size)), b=(1/math.sqrt(hidden_size)))
+
+    def forward(self, x):        
+        if self.h_t.dim() == 3:           
+            self.h_t = self.h_t[0]
+        self.h_t = torch.transpose(self.h_t, 0, 1)
+        #x = torch.transpose(x, 0, 1)
+        ones = [[1]] * self.hidden_size
+        self.ones = torch.tensor(ones, dtype=torch.float).to(device)
+        self.Sigmoid = nn.Sigmoid()
+        self.Tanh = nn.Tanh()
+        self.z_t = self.Sigmoid(torch.matmul(self.w_z, self.h_t) + torch.matmul(self.p_z, x) + self.b_z)
+        self.h_t = torch.mul(self.z_t, self.h_t) + torch.mul((1 - self.z_t), self.Tanh(self.w*self.h_t + self.p*x + self.b)) 
+        self.h_t = torch.transpose(self.h_t, 0, 1)                
+
+class trainableZ(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, batch_first=True):
+        super(trainableZ, self).__init__()
+        self.rnncell = trainableZCell(input_size, hidden_size, num_layers).to(device)
+        self.batch_first = batch_first
+
+    def forward(self, x):
+        if self.batch_first == True:
+            for n in range(x.size(1)):
+                x_slice = torch.transpose(x[:,n,:], 0, 1) 
+                self.rnncell(x_slice)
+        return self.rnncell.h_t             
+            
+class customRNN(nn.Module):
+    
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super(customRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = trainableZ(input_size, hidden_size, num_layers)
+        self.fc = nn.Linear(hidden_size, num_classes)
+        pass
+
+    def forward(self, x):
+        # Set initial hidden and cell states 
+        self.lstm.rnncell.h_t = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
+        #c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
+        # Passing in the input and hidden state into the model and  obtaining outputs
+        out = self.lstm(x)  # out: tensor of shape (batch_size, seq_length, hidden_size)
+        #Reshaping the outputs such that it can be fit into the fully connected layer
+        out = self.fc(out)
+        return out
+        
+        pass                                    
+pass
+
 def spiraliser(m, n, a):
     a = a.cpu()
     a = a.numpy()
@@ -459,10 +528,10 @@ if __name__ == '__main__':
     biglist = []
 
     for input_sizes in [4, 8, 16]:
-        for timegaps in [1]:
+        for timegaps in [1, 4, 28]:
             timegap = timegaps
             input_size = input_sizes
-            model = GRU(input_size, hidden_size, num_layers, num_classes).to(device)
+            model = customRNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
