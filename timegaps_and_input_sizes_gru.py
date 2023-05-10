@@ -335,7 +335,7 @@ class trainableZCell(nn.Module):
         self.Sigmoid = nn.Sigmoid()
         self.Tanh = nn.Tanh()
         self.z_t = self.Sigmoid(torch.matmul(self.w_z, self.h_t) + torch.matmul(self.p_z, x) + self.b_z)
-        self.h_t = torch.mul(self.z_t, self.h_t) + torch.mul((1 - self.z_t), self.Tanh(self.w*self.h_t + self.p*x + self.b)) 
+        self.h_t = torch.mul(self.z_t, self.h_t) + torch.mul((1 - self.z_t), self.Tanh(torch.matmul(self.w,self.h_t) + torch.matmul(self.p,x) + self.b))  
         self.h_t = torch.transpose(self.h_t, 0, 1)                
 
 class trainableZ(nn.Module):
