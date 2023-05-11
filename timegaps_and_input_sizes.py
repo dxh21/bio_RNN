@@ -212,6 +212,7 @@ class STPCell(nn.Module):
                 self.forprintingU = []'''
 
             # System Equations 
+            self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h)
             # self.z_h = self.e_h * sigmoid(self.c_h) 
             #a = self.w * self.U * self.X
             #print("size of a", a.size())
@@ -219,7 +220,7 @@ class STPCell(nn.Module):
             #print("size of a * h_t", torch.matmul(a, self.h_t).size())
             #print("size of x", x.size())
             x = torch.transpose(x, 0, 1)
-            self.h_t = torch.mul((1 - self.c_h), self.h_t) + self.c_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
+            self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
             #self.h_t = torch.matmul(self.w, self.h_t) + torch.matmul(self.p, x) + self.b
             self.h_t = torch.transpose(self.h_t, 0, 1)
             return self.h_t
