@@ -242,7 +242,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -415,7 +415,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 48
+    hidden_size = 24
     timegap = 3
     num_layers = 1
     num_classes = 10
@@ -437,7 +437,7 @@ if __name__ == '__main__':
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_0initialisation_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_0initialisation_poor_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
