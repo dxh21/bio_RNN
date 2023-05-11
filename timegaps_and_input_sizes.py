@@ -429,7 +429,7 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [16]:
+    for input_sizes in [4]:
         for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
