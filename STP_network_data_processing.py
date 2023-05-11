@@ -449,10 +449,14 @@ if __name__ == '__main__':
     w = model.lstm.stpcell.w 
     w = w.cpu().detach().numpy()
 
+    p = model.lstm.stpcell.p.cpu().detach().numpy()
+    print(type(p))
+
     tau_x = 1/z_x
     tau_u = 1/z_u
     tau_U = 1/U 
 
+    # 1) Plotting the heatmaps of the dynamic variables and their histograms 
     '''ax = sns.heatmap(1/z_x)
     plt.title("2D Heat map of z_x")
     plt.show()
@@ -476,11 +480,13 @@ if __name__ == '__main__':
 
     ax = sns.heatmap(w)
     plt.title("Heat map of w")
-    plt.show()'''
-    ax = sns.heatmap(1/z_u)
-    plt.title("2D Heat map of z_u")
     plt.show()
+    
+    ax = sns.heatmap(p)
+    plt.title("2D Heat map of p")
+    plt.show()'''
 
+    # 2) Plotting a graph which tracks the mean of 1/z_u across columns and across rows 
     neuron_output_u = np.sum(1/z_u, axis=0) 
     neuron_input_u = np.sum(1/z_u, axis=1)
     plt.plot(neuron_output_u)
@@ -490,6 +496,7 @@ if __name__ == '__main__':
     print(sum(neuron_output_u/hidden_size))
     plt.show()
 
+    # 3) Scatter plots of dynamic variables against each other for a single synapse 
     plt.scatter(w, 1/z_u)
     plt.xlabel("w")
     plt.ylabel("1/z_u")
@@ -500,6 +507,7 @@ if __name__ == '__main__':
     plt.ylabel("1/z_u")
     plt.show()'''
 
+    # 4) Scatter plots of dynamic variables against each other for a single synapse using DataFrame 
     '''dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
     display(dataset)
 
@@ -529,21 +537,16 @@ if __name__ == '__main__':
     ax.set_zlabel('1/U')
     plt.show()'''
 
-    p = model.lstm.stpcell.p.cpu().detach().numpy()
-    print(type(p))
-
+    # 5) Plotting the weights of the last linear layer 
     for name, param in model.fc.named_parameters():
         if name == "weight":
             linearweights = param.cpu().detach().numpy()
 
-    '''ax = sns.heatmap(p)
-    plt.title("2D Heat map of p")
-    plt.show()
-
     ax = sns.heatmap(linearweights)
     plt.title("2D Heat map of weights of linear layer")
-    plt.show()'''
+    plt.show()
 
+    # 6) Plotting the magnitude of input weights against output weights
     normp = np.linalg.norm(p, axis=1)
     print(normp)
 
