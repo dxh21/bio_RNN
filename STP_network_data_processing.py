@@ -86,6 +86,7 @@ class STPCell(nn.Module):
             self.U = torch.full((self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)         
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
+
         if self.complexity == "poor":
             # System variables 
             self.e_h = e_h
@@ -94,6 +95,8 @@ class STPCell(nn.Module):
             self.delta_t = 1
             self.alpha = alpha
             self.e_ux = self.alpha * self.e_h
+            self.z_min = 0.001
+            self.z_max = 0.1
 
             # Short term Depression parameters  
             self.c_x = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
@@ -110,8 +113,8 @@ class STPCell(nn.Module):
             
             # State initialisations
             self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
-            self.X = torch.ones(self.hidden_size, self.hidden_size, dtype=torch.float32)
-            self.U = torch.full((x.size(0), self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)
+            self.X = torch.ones(self.hidden_size, 1, dtype=torch.float32)
+            self.U = torch.full((self.hidden_size, 1), 0.9, dtype=torch.float32)
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
 
@@ -205,6 +208,7 @@ class STPCell(nn.Module):
                 self.forprintingU = []
 
             # System Equations 
+            self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h)
             # self.z_h = self.e_h * sigmoid(self.c_h) 
             #a = self.w * self.U * self.X
             #print("size of a", a.size())
@@ -212,7 +216,7 @@ class STPCell(nn.Module):
             #print("size of a * h_t", torch.matmul(a, self.h_t).size())
             #print("size of x", x.size())
             x = torch.transpose(x, 0, 1)
-            self.h_t = torch.mul((1 - self.c_h), self.h_t) + self.c_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
+            self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
             #self.h_t = torch.matmul(self.w, self.h_t) + torch.matmul(self.p, x) + self.b
             self.h_t = torch.transpose(self.h_t, 0, 1)
             return self.h_t
@@ -234,7 +238,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -406,7 +410,7 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 16
+    input_size = 4
     hidden_size = 24
     timegap = 4
     num_layers = 1
@@ -420,7 +424,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_0initialisation_24_16_4.pth"))
+    model.load_state_dict(torch.load("STPMNIST_0initialisation_poor_24_4_4.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -457,7 +461,7 @@ if __name__ == '__main__':
     tau_U = 1/U 
 
     # 1) Plotting the heatmaps of the dynamic variables and their histograms 
-    '''ax = sns.heatmap(1/z_x)
+    ax = sns.heatmap(1/z_x)
     plt.title("2D Heat map of z_x")
     plt.show()
 
@@ -484,19 +488,19 @@ if __name__ == '__main__':
     
     ax = sns.heatmap(p)
     plt.title("2D Heat map of p")
-    plt.show()'''
+    plt.show()
 
     # 2) Plotting a graph which tracks the mean of 1/z_u across columns and across rows 
-    neuron_output_u = np.sum(1/z_u, axis=0) 
+    '''neuron_output_u = np.sum(1/z_u, axis=0) 
     neuron_input_u = np.sum(1/z_u, axis=1)
     plt.plot(neuron_output_u)
     plt.plot(neuron_input_u)
     plt.legend(["axis=0", "axis=1"])
     print(sum(neuron_input_u/hidden_size))
     print(sum(neuron_output_u/hidden_size))
-    plt.show()
+    plt.show()'''
 
-    # 3) Scatter plots of dynamic variables against each other for a single synapse 
+    # 3) This first plot plots w against 1/z_u, shows excitatory and inhibitory neurons and their STP facilitation time constants 
     plt.scatter(w, 1/z_u)
     plt.xlabel("w")
     plt.ylabel("1/z_u")
@@ -508,7 +512,7 @@ if __name__ == '__main__':
     plt.show()'''
 
     # 4) Scatter plots of dynamic variables against each other for a single synapse using DataFrame 
-    '''dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
+    dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
     display(dataset)
 
     sns.scatterplot(dataset, x='1/z_x', y='1/z_u')
@@ -535,7 +539,7 @@ if __name__ == '__main__':
     ax.set_xlabel('1/z_x')
     ax.set_ylabel('1/z_u')
     ax.set_zlabel('1/U')
-    plt.show()'''
+    plt.show()
 
     # 5) Plotting the weights of the last linear layer 
     for name, param in model.fc.named_parameters():
