@@ -415,7 +415,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 24
+    hidden_size = 48
     timegap = 3
     num_layers = 1
     num_classes = 10
@@ -429,7 +429,7 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [16]:
+    for input_sizes in [4,8,16]:
         for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
