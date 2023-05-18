@@ -348,10 +348,12 @@ class STPCelldynamicz(nn.Module):
 
             # System Equations 
             #self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h) 
+            #self.absolute_w = torch.abs(self.w.repeat(self.batch_size, 1, 1))
             self.absolute_w = torch.abs(self.w)
             self.absolute_p = torch.abs(self.p)
-            self.z_h = sigmoid(self.scalar_alpha * torch.matmul(self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
             x = torch.transpose(x, 0, 1)
+            self.z_h = sigmoid(self.scalar_alpha * torch.matmul(self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
+            #self.z_h = sigmoid(self.scalar_alpha * torch.einsum("ijk, ki -> ji", self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
             self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.einsum("ijk, ki  -> ji", (self.w * self.U * self.X), self.h_t) + torch.matmul(self.p, x) + self.b)
             self.h_t = torch.transpose(self.h_t, 0, 1)
             return self.h_t   
@@ -398,7 +400,7 @@ class STPCelldynamicz(nn.Module):
 class STP(nn.Module):
     def __init__(self, input_size, hidden_size, complexity, e_h, alpha): 
         super(STP, self).__init__()
-        self.stpcell = STPCell(input_size, hidden_size, complexity, e_h, alpha)
+        self.stpcell = STPCelldynamicz(input_size, hidden_size, complexity, e_h, alpha)
 
     def forward(self, x):
         for n in range(x.size(1)):
@@ -585,7 +587,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 48
+    hidden_size = 24
     timegap = 3
     num_layers = 1
     num_classes = 10
@@ -599,7 +601,7 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [16]:
+    for input_sizes in [4]:
         for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
@@ -607,7 +609,7 @@ if __name__ == '__main__':
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_0initialisation_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_0initialisation_dynamicz_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
