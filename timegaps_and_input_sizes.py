@@ -148,15 +148,8 @@ class STPCell(nn.Module):
                 self.forprintingh = []'''   
 
             # Short term Depression 
-            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
-            #print("z_x", self.z_x.size())
-            #print("self.X", self.X.size())
-            #print("self.ones", self.ones.size())
-            #print("h_t", self.h_t.size())
-            #a = self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
-            #print("a", a)
-            #print("a size", a.size())
-            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
@@ -164,6 +157,9 @@ class STPCell(nn.Module):
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
+            
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
 
             # System Equations 
             self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h) 
@@ -400,7 +396,7 @@ class STPCelldynamicz(nn.Module):
 class STP(nn.Module):
     def __init__(self, input_size, hidden_size, complexity, e_h, alpha): 
         super(STP, self).__init__()
-        self.stpcell = STPCelldynamicz(input_size, hidden_size, complexity, e_h, alpha)
+        self.stpcell = STPCell(input_size, hidden_size, complexity, e_h, alpha)
 
     def forward(self, x):
         for n in range(x.size(1)):
@@ -601,15 +597,15 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [16]:
-        for timegaps in [28]:
+    for input_sizes in [4,8,16]:
+        for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_0initialisation_dynamicz_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_ufirst_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
