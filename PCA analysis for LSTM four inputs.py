@@ -13,12 +13,13 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 from mpl_toolkits import mplot3d
-
+plt.rcParams['font.size'] = 18
+plt.rcParams["font.family"] = "Times New Roman"
 device = "cpu" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
 
 class A2C(nn.Module):
-    def __init__(self, input_size, n_actions, bandits, hidden_size=96, num_layers=1, gamma = 0.75):
+    def __init__(self, input_size, n_actions, bandits, hidden_size=48, num_layers=1, gamma = 0.75):
         super(A2C, self).__init__()
 
         self.num_layers = num_layers
@@ -26,7 +27,7 @@ class A2C(nn.Module):
         self.hidden_size = hidden_size
         self.bandits = Bandits()
 
-        self.rnn = nn.GRU(input_size, self.hidden_size)
+        self.rnn = nn.LSTM(input_size, self.hidden_size)
 
         self.pi = nn.Linear(self.hidden_size, n_actions)
         self.v = nn.Linear(self.hidden_size, 1)
@@ -36,15 +37,16 @@ class A2C(nn.Module):
         self.oracle_rewards = []
         self.dumb_rewards = []
         self.meta_rewards = []
-        self.x = [[0, 1, 0, 1]]
+        self.x = [[1, 1, 0, 0]]
         self.x = torch.tensor(self.x, dtype=torch.float, device=device)
 
         self.policies = []
         self.values = []
         
         self.h_t = (torch.zeros(self.x.size(0), self.hidden_size, dtype=torch.float32, device=device))
+        self.c_t = (torch.zeros(self.x.size(0), self.hidden_size, dtype=torch.float32, device=device))
 
-        self.hiddens = [self.h_t]
+        self.hiddens = [[self.h_t, self.c_t]]
         self.xs = []
 
         zero_input = [[1, 1, 0, 1]]
@@ -73,8 +75,8 @@ class A2C(nn.Module):
         self.x = torch.tensor(x, dtype=torch.float, device=device)
 
     def forward(self,x):
-        lstm_output, self.h_t = self.rnn(x, self.h_t)
-        self.hiddens.append(self.h_t)
+        lstm_output, (self.h_t,self.c_t) = self.rnn(x, (self.h_t,self.c_t))
+        self.hiddens.append([self.h_t, self.c_t])
         pre_softmax_policy = self.pi(lstm_output)
         value = self.v(lstm_output)
 
@@ -83,8 +85,8 @@ class A2C(nn.Module):
         return pre_softmax_policy, value
 
     def hidden_path(self):
-        lstm_output, self.h_t = self.rnn(self.zero_input, self.h_t)
-        self.zero_input[0][3] += 1    
+        lstm_output, (self.h_t,self.c_t) = self.rnn(self.zero_input, (self.h_t,self.c_t))
+        self.zero_input[0][3] += 1
 
     def calc_loss(self, done, t_step, T_MAX):
         beta_e = 0.05
@@ -165,8 +167,8 @@ class Bandits():
         return reward, self.p_0, self.p_1
     
     def calculate_reward_25_75(self, action, T_MAX):
-        p_0 = 0.1
-        p_1 = 0.9
+        p_0 = 0
+        p_1 = 1
         reward = 0
         if action == 0:
             if random.random() <= p_0:
@@ -177,8 +179,8 @@ class Bandits():
         return reward, p_0, p_1
     
     def calculate_reward_flip(self, action, T_MAX):
-        p_0 = 0.9
-        p_1 = 0.1
+        p_0 = 1
+        p_1 = 0
         reward = 0 
         if action == 0:
             if random.random() <= p_0:
@@ -224,12 +226,11 @@ class Agent():
         self.graph_reward = []
         self.graph_loss = []
         data = []
-        hidden_state_matrix1 = []
-        hidden_state_matrix2 = []
 
         t_step = 1
 
         self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+        self.actor_critic.c_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
         
         while self.episode < (META_EPISODES):
             done = False
@@ -247,11 +248,10 @@ class Agent():
                     t_step_input = 100
                 self.actor_critic.form_x(action, reward, t_step_input)
                 self.actor_critic.xs.append(self.actor_critic.x)
-
-                hidden_state_matrix1.append(self.actor_critic.h_t.tolist()[0]) 
                 
                 if t_step % T_MAX == 0 and t_step != 0: 
-                    #self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+                    self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+                    self.actor_critic.c_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
 
                     done = True
                     #for name, param in self.actor_critic.rnn.named_parameters():
@@ -281,22 +281,8 @@ class Agent():
                 self.graph_reward_mean.append(average/10)
                 average = 0'''
 
-        hidden_state_matrix1 = [list(i) for i in zip(*hidden_state_matrix1)]
-        hidden_state_labels = ['Hidden dimension number ' + str(i) for i in range(1,actor_critic.hidden_size+1)]
-        data1 = pd.DataFrame(hidden_state_matrix1, index=hidden_state_labels)
-        scaled_data1 = preprocessing.scale(data1.T)
-
-        pca1 = PCA()
-        pca1.fit(scaled_data1)
-        pca_data1 = pca1.transform(scaled_data1)
-
-        per_var1 = np.round(pca1.explained_variance_ratio_* 100, decimals=1)
-        labels1 = ['PC' + str(x) for x in range(1, len(per_var1)+1)]
-        
-        pca_df1 = pd.DataFrame(pca_data1, index=hidden_state_matrix1, columns=labels1)
-
-        # starting second section 
         self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+        self.actor_critic.c_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
 
         while self.episode < (META_EPISODES+META_EPISODES):
             done = False
@@ -315,10 +301,9 @@ class Agent():
                 self.actor_critic.form_x(action, reward, t_step_input)
                 self.actor_critic.xs.append(self.actor_critic.x)
                 
-                hidden_state_matrix2.append(self.actor_critic.h_t.tolist()[0])
-
                 if t_step % T_MAX == 0 and t_step != 0: 
-                    #self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+                    self.actor_critic.h_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
+                    self.actor_critic.c_t = (torch.zeros(self.actor_critic.x.size(0), self.actor_critic.hidden_size, dtype=torch.float32, device=device))
 
                     done = True
                     #for name, param in self.actor_critic.rnn.named_parameters():
@@ -337,36 +322,9 @@ class Agent():
             print('Episode', self.episode, 'Reward %.1f' % score)
             self.graph_episode.append(self.episode)
             self.graph_reward.append(score/(max(p_0,p_1)))
-
-        hidden_state_matrix2 = [list(i) for i in zip(*hidden_state_matrix2)]
-        data2 = pd.DataFrame(hidden_state_matrix2, index=hidden_state_labels)
-        scaled_data2 = preprocessing.scale(data2.T)
-
-        pca2 = PCA()
-        pca2.fit(scaled_data1)
-        pca_data2 = pca2.transform(scaled_data2)
-
-        per_var2 = np.round(pca2.explained_variance_ratio_* 100, decimals=1)
-        labels2 = ['PC' + str(x) for x in range(1, len(per_var2)+1)]
-        
-        pca_df2 = pd.DataFrame(pca_data2, index=hidden_state_matrix2, columns=labels2)
-
-        plt.scatter(pca_df1.PC1, pca_df1.PC2, color=['red'])
-        plt.scatter(pca_df2.PC1, pca_df2.PC2, color=['blue'])
-        plt.plot(pca_df1.PC1, pca_df1.PC2)
-        plt.plot(pca_df2.PC1, pca_df2.PC2)
-        plt.show()
-
         plt.plot(self.graph_episode,self.graph_reward)
         #plt.plot(self.graph_episode_for_mean,self.graph_reward_mean)
         plt.show()
-
-        '''fig = plt.figure()
-        ax = plt.axes(projection='3d')
-
-        plt.plot(pca_df1.PC1, pca_df1.PC2, pca_df1.PC3, 'r')
-        #plt.plot(pca_df2.PC1, pca_df2.PC2, 'b')
-        plt.show()'''
 
         cmap = colors.ListedColormap(['dodgerblue','skyblue'])
         bounds = [0,1]
@@ -389,7 +347,7 @@ if __name__ == '__main__':
     META_EPISODES = 10
     bandits = Bandits()
     actor_critic = A2C(input_size, n_actions, bandits)
-    actor_critic.load_state_dict(torch.load("meta_lstm_gru_96_hidden_size.pth"))
+    actor_critic.load_state_dict(torch.load("meta_lstm.pth"))
     ep = 0 
     worker = Agent(actor_critic, input_size, n_actions, gamma=0.75, lr=lr, bandits = Bandits(), episode = ep)
 
@@ -411,18 +369,12 @@ if __name__ == '__main__':
     h_t = [0] * actor_critic.hidden_size
     h_t = [h_t]
     actor_critic.h_t = torch.tensor(h_t, dtype=torch.float, device=device)
-
-    for n in range(10):
+    actor_critic.c_t = torch.tensor(h_t, dtype=torch.float, device=device)
+    hidden_state_matrix1.append(actor_critic.h_t.tolist()[0])
+    for n in range(99):
         #print(actor_critic.zero_input) 
         actor_critic.hidden_path()  
         hidden_state_matrix1.append(actor_critic.h_t.tolist()[0]) 
-    
-    zero_input = [[0, 1, 0, 1]]
-    actor_critic.zero_input = torch.tensor(zero_input, dtype=torch.float, device=device)
-
-    for n in range(90):
-        actor_critic.hidden_path()  
-        hidden_state_matrix1.append(actor_critic.h_t.tolist()[0])
 
     hidden_state_matrix1 = [list(i) for i in zip(*hidden_state_matrix1)]
     #print("hidden_state_matrix", hidden_state_matrix)
@@ -449,8 +401,9 @@ if __name__ == '__main__':
     h_t = [0] * actor_critic.hidden_size
     h_t = [h_t]
     actor_critic.h_t = torch.tensor(h_t, dtype=torch.float, device=device)
-
-    for n in range(100):
+    actor_critic.c_t = torch.tensor(h_t, dtype=torch.float, device=device)
+    hidden_state_matrix2.append(actor_critic.h_t.tolist()[0])
+    for n in range(99):
         #print(actor_critic.zero_input) 
         actor_critic.hidden_path()  
         hidden_state_matrix2.append(actor_critic.h_t.tolist()[0])
@@ -479,8 +432,9 @@ if __name__ == '__main__':
     h_t = [0] * actor_critic.hidden_size
     h_t = [h_t]
     actor_critic.h_t = torch.tensor(h_t, dtype=torch.float, device=device)
-
-    for n in range(100):
+    actor_critic.c_t = torch.tensor(h_t, dtype=torch.float, device=device)
+    hidden_state_matrix3.append(actor_critic.h_t.tolist()[0])
+    for n in range(99):
         #print(actor_critic.zero_input) 
         actor_critic.hidden_path()  
         hidden_state_matrix3.append(actor_critic.h_t.tolist()[0])
@@ -509,8 +463,9 @@ if __name__ == '__main__':
     h_t = [0] * actor_critic.hidden_size
     h_t = [h_t]
     actor_critic.h_t = torch.tensor(h_t, dtype=torch.float, device=device)
-
-    for n in range(100):
+    actor_critic.c_t = torch.tensor(h_t, dtype=torch.float, device=device)
+    hidden_state_matrix4.append(actor_critic.h_t.tolist()[0])
+    for n in range(99):
         #print(actor_critic.zero_input) 
         actor_critic.hidden_path()  
         hidden_state_matrix4.append(actor_critic.h_t.tolist()[0])
@@ -570,9 +525,13 @@ if __name__ == '__main__':
     plt.show()
 
     pca_df = pd.DataFrame(pca_data, index=hidden_state_matrix, columns=labels)'''
+    #----------------------
+    plt.bar(x=range(1,len(per_var1)+1), height=per_var1, tick_label=labels1)
+    plt.ylabel('Percentage of Explained Variance')
+    plt.xlabel('Principal Component')
+    plt.title('Scree Plot')
+    plt.show()
 
-    #fig = plt.figure()
-    #ax = plt.axes(projection='3d')
 
     plt.scatter(pca_df1.PC1, pca_df1.PC2, color=['red'])
     plt.scatter(pca_df2.PC1, pca_df2.PC2, color=['blue'])
@@ -582,13 +541,18 @@ if __name__ == '__main__':
     plt.plot(pca_df2.PC1, pca_df2.PC2, 'b')
     plt.plot(pca_df3.PC1, pca_df3.PC2, 'g')
     plt.plot(pca_df4.PC1, pca_df4.PC2, 'y')
-    '''ax.scatter3D(pca_df1.PC1, pca_df1.PC2, pca_df1.PC3)
+    plt.show()
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(pca_df1.PC1, pca_df1.PC2, pca_df1.PC3)
     ax.scatter3D(pca_df2.PC1, pca_df2.PC2, pca_df2.PC3)
     ax.scatter3D(pca_df3.PC1, pca_df3.PC2, pca_df3.PC3)
-    ax.scatter3D(pca_df4.PC1, pca_df4.PC2, pca_df4.PC3)'''
-    #ax.plot3D(pca_df.PC1[:len(pca_df.PC1)//2], pca_df.PC2[:len(pca_df.PC1)//2], pca_df.PC3[:len(pca_df.PC1)//2])
-    #ax.plot3D(pca_df.PC1[len(pca_df.PC1)//2:], pca_df.PC2[len(pca_df.PC1)//2:], pca_df.PC3[len(pca_df.PC1)//2:])
-    plt.title('Trajectory of hidden states in GRU')
+    ax.scatter3D(pca_df4.PC1, pca_df4.PC2, pca_df4.PC3)
+    ax.plot3D(pca_df1.PC1, pca_df1.PC2, pca_df1.PC3)
+    ax.plot3D(pca_df2.PC1, pca_df2.PC2, pca_df2.PC3)
+    ax.plot3D(pca_df3.PC1, pca_df3.PC2, pca_df3.PC3)
+    ax.plot3D(pca_df4.PC1, pca_df4.PC2, pca_df4.PC3)
+    plt.title('Trajectory of hidden states + cell states in LSTM')
     plt.legend(['Left arm always reward', 'Left arm never reward', 'Right arm always reward', 'Right arm never reward'], prop={'size': 20})
     #plt.xlabel('PC1 - {0}%'.format(per_var[0]))
     #plt.ylabel('PC2 - {0}%'.format(per_var[1])) 
@@ -597,3 +561,54 @@ if __name__ == '__main__':
     plt.ylabel('PC2')
     plt.show()
 
+#----------------------------------------------------------------------------------------------
+# Now doing PCA for all four dynamical systems together so the trajectories all start from 0 
+    print(len(hidden_state_matrix1[0]))
+    hidden_state_matrix_total = hidden_state_matrix1 + hidden_state_matrix2 + hidden_state_matrix3 + hidden_state_matrix4
+    #print("hidden_state_matrix", hidden_state_matrix)
+
+    hidden_state_matrix_total = [0] * 48
+    
+    for n in range(len(hidden_state_matrix_total)):
+        hidden_state_matrix_total[n] = hidden_state_matrix1[n] + hidden_state_matrix2[n] + hidden_state_matrix3[n] + hidden_state_matrix4[n]
+
+    hidden_state_labels = ['Hidden dimension number ' + str(i) for i in range(1,actor_critic.hidden_size+1)]
+    
+    data5 = pd.DataFrame(hidden_state_matrix_total, index=hidden_state_labels)
+
+    scaled_data5 = preprocessing.scale(data5.T)
+
+    pca5 = PCA()
+    pca5.fit(scaled_data5)
+    pca_data5 = pca5.transform(scaled_data5)
+
+    per_var5 = np.round(pca5.explained_variance_ratio_* 100, decimals=1)
+    labels5 = ['PC' + str(x) for x in range(1, len(per_var5)+1)]
+    
+    pca_df5 = pd.DataFrame(pca_data5, index=hidden_state_matrix_total, columns=labels5)
+    print(len(pca_df5.PC1))
+    plt.scatter(pca_df5.PC1[0:99], pca_df5.PC2[0:99], color=['red'])
+    plt.scatter(pca_df5.PC1[100:199], pca_df5.PC2[100:199], color=['blue'])
+    plt.scatter(pca_df5.PC1[200:299], pca_df5.PC2[200:299], color=['green'])
+    plt.scatter(pca_df5.PC1[300:400], pca_df5.PC2[300:400], color=['yellow'])
+    plt.xlabel('PC1')
+    plt.ylabel('PC2')
+    plt.legend(["left always reward", "left no reward", "right always reward", "right no reward"])
+    plt.plot(pca_df5.PC1[0:99], pca_df5.PC2[0:99], 'r')
+    plt.plot(pca_df5.PC1[100:199], pca_df5.PC2[100:199], 'b')
+    plt.plot(pca_df5.PC1[200:299], pca_df5.PC2[200:299], 'g')
+    plt.plot(pca_df5.PC1[300:400], pca_df5.PC2[300:400], 'y')
+    #plt.legend("left always reward, left no reward, right always reward, right no reward ")
+    plt.show()
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(pca_df5.PC1[0:99], pca_df5.PC2[0:99], pca_df5.PC3[0:99], color=['red'])
+    ax.scatter3D(pca_df5.PC1[100:199], pca_df5.PC2[100:199], pca_df5.PC3[100:199], color=['blue'])
+    ax.scatter3D(pca_df5.PC1[200:299], pca_df5.PC2[200:299], pca_df5.PC3[200:299], color=['green'])
+    ax.scatter3D(pca_df5.PC1[300:400], pca_df5.PC2[300:400], pca_df5.PC3[300:400],'y')
+    ax.plot3D(pca_df5.PC1[0:99], pca_df5.PC2[0:99], pca_df5.PC3[0:99])
+    ax.plot3D(pca_df5.PC1[100:199], pca_df5.PC2[100:199], pca_df5.PC3[100:199])
+    ax.plot3D(pca_df5.PC1[200:299], pca_df5.PC2[200:299], pca_df5.PC3[200:299])
+    ax.plot3D(pca_df5.PC1[300:400], pca_df5.PC2[300:400], pca_df5.PC3[300:400])
+    plt.show()

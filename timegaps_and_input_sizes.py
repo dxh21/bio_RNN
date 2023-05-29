@@ -258,8 +258,8 @@ class STPCelldynamicz(nn.Module):
             # State initialisations
             self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
             self.X = torch.ones(self.hidden_size, self.hidden_size, dtype=torch.float32)     
-            self.U = torch.full((self.hidden_size, self.hidden_size), 0.9, dtype=torch.float32)         
-            self.Ucap = 0.9 * sigmoid(self.c_U)
+            self.U = torch.full((self.hidden_size, self.hidden_size), 0.99, dtype=torch.float32)         
+            self.Ucap = 0.99 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
 
         if self.complexity == "poor":
@@ -291,8 +291,8 @@ class STPCelldynamicz(nn.Module):
             # State initialisations
             self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
             self.X = torch.ones(self.hidden_size, 1, dtype=torch.float32)
-            self.U = torch.full((self.hidden_size, 1), 0.9, dtype=torch.float32)
-            self.Ucap = 0.9 * sigmoid(self.c_U)
+            self.U = torch.full((self.hidden_size, 1), 0.99, dtype=torch.float32)
+            self.Ucap = 0.99 * sigmoid(self.c_U)
             self.Ucapclone = self.Ucap.clone().detach()
 
         for name, param in self.named_parameters():
@@ -303,7 +303,7 @@ class STPCelldynamicz(nn.Module):
             if name == "c_u":
                 nn.init.zeros_(param)
             if name == "c_U":
-                nn.init.zeros_(param) 
+                nn.init.constant_(param, 2.0) 
             if name == "p":
                 nn.init.uniform_(param, a=-(1/math.sqrt(self.input_size)), b=(1/math.sqrt(self.input_size)))     
             if name == "b": 
@@ -332,7 +332,7 @@ class STPCelldynamicz(nn.Module):
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
-            self.Ucap = 0.9 * sigmoid(self.c_U)
+            self.Ucap = 0.99 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
@@ -365,7 +365,7 @@ class STPCelldynamicz(nn.Module):
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
-            self.Ucap = 0.9 * sigmoid(self.c_U)
+            self.Ucap = 0.99 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
             self.Ucapclone = self.Ucap.clone().detach()
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
@@ -397,7 +397,7 @@ class STPCelldynamicz(nn.Module):
 class STP(nn.Module):
     def __init__(self, input_size, hidden_size, complexity, e_h, alpha): 
         super(STP, self).__init__()
-        self.stpcell = STPCell(input_size, hidden_size, complexity, e_h, alpha)
+        self.stpcell = STPCelldynamicz(input_size, hidden_size, complexity, e_h, alpha)
 
     def forward(self, x):
         for n in range(x.size(1)):
@@ -411,7 +411,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
