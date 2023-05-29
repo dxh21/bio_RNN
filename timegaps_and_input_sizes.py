@@ -381,14 +381,11 @@ class STPCelldynamicz(nn.Module):
                 self.forprintingU = []'''
 
             # System Equations 
-            self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h)
-            # self.z_h = self.e_h * sigmoid(self.c_h) 
-            #a = self.w * self.U * self.X
-            #print("size of a", a.size())
-            #print("size of h_t", self.h_t.size())
-            #print("size of a * h_t", torch.matmul(a, self.h_t).size())
-            #print("size of x", x.size())
+            #self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h)
+            self.absolute_w = torch.abs(self.w)
+            self.absolute_p = torch.abs(self.p)
             x = torch.transpose(x, 0, 1)
+            self.z_h = sigmoid(self.scalar_alpha * torch.matmul(self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
             self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
             #self.h_t = torch.matmul(self.w, self.h_t) + torch.matmul(self.p, x) + self.b
             self.h_t = torch.transpose(self.h_t, 0, 1)
@@ -411,7 +408,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -606,7 +603,7 @@ if __name__ == '__main__':
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_ufirst_poor_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_ufirst_poor_dynamicz_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
