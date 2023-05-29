@@ -584,7 +584,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 28
-    hidden_size = 48
+    hidden_size = 24
     timegap = 3
     num_layers = 1
     num_classes = 10
