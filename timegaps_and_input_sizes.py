@@ -182,16 +182,8 @@ class STPCell(nn.Module):
             sigmoid = nn.Sigmoid()
             
             # Short term Depression 
-            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
-            #print("z_x", self.z_x.size())
-            #print("self.X", self.X.size())
-            #print("self.ones", self.ones.size())
-            #print("h_t", self.h_t.size())
-            #a = self.delta_t * self.U * self.X * self.h_t
-            #print("a", a)
-            #print("a size", a.size())
-        
-            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)      
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
@@ -199,6 +191,9 @@ class STPCell(nn.Module):
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
             self.Ucapclone = self.Ucap.clone().detach()
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
+
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)      
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
 
             # graph plotting 
             '''self.forprintingX.append(self.X[20,5].item())
@@ -332,8 +327,8 @@ class STPCelldynamicz(nn.Module):
                 self.forprintingh = []'''   
 
             # Short term Depression 
-            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
-            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
@@ -341,6 +336,9 @@ class STPCelldynamicz(nn.Module):
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
+            
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
 
             # System Equations 
             #self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h) 
@@ -362,8 +360,8 @@ class STPCelldynamicz(nn.Module):
             sigmoid = nn.Sigmoid()
             
             # Short term Depression 
-            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
-            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
 
             # Short term Facilitation 
             self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
@@ -371,6 +369,9 @@ class STPCelldynamicz(nn.Module):
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
             self.Ucapclone = self.Ucap.clone().detach()
             self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
+
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
 
             # graph plotting 
             '''self.forprintingX.append(self.X[20,5].item())
