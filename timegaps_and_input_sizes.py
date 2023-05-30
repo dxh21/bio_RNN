@@ -408,7 +408,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -595,15 +595,15 @@ if __name__ == '__main__':
 
     biglist = []
 
-    for input_sizes in [8]:
-        for timegaps in [28]:
+    for input_sizes in [4,8,16]:
+        for timegaps in [1,4,28]:
             timegap = timegaps
             input_size = input_sizes
             model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
             optimizer = optim.Adam(model.parameters(), lr = 0.01)
             print(model)
             train(num_epochs, model, loaders)
-            FILE = f"STPMNIST_ufirst_poor_dynamicz_{hidden_size}_{input_size}_{timegap}.pth"
+            FILE = f"STPMNIST_ufirst_rich_dynamicz_{hidden_size}_{input_size}_{timegap}.pth"
             torch.save(model.state_dict(), FILE)
             biglist.append([input_size, timegap, evaluate(model)])   
             print(biglist) 
