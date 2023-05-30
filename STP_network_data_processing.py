@@ -411,9 +411,9 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 8
-    hidden_size = 24
-    timegap = 28
+    input_size = 4
+    hidden_size = 48
+    timegap = 1
     num_layers = 1
     num_classes = 10
     batch_size = 100
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_ufirst_24_8_28.pth"))
+    model.load_state_dict(torch.load("STPMNIST_ufirst_48_4_4.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -503,7 +503,7 @@ if __name__ == '__main__':
     #plt.show()
 
     ax = sns.heatmap(w)
-    plt.title("Heat map of w")
+    plt.title("2D Heat map of w")
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
