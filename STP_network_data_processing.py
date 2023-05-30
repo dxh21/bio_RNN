@@ -6,7 +6,8 @@ import seaborn as sns
 import pandas as pd
 from IPython.display import display
 from mpl_toolkits import mplot3d
-
+plt.rcParams['font.size'] = 18
+plt.rcParams["font.family"] = "Times New Roman"
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
@@ -238,7 +239,7 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = STP(input_size, hidden_size, "poor", 0.9, 0.1)
+        self.lstm = STP(input_size, hidden_size, "rich", 0.9, 0.1)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.update_number = 0
         pass
@@ -410,9 +411,9 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 4
-    hidden_size = 24
-    timegap = 4
+    input_size = 8
+    hidden_size = 48
+    timegap = 28
     num_layers = 1
     num_classes = 10
     batch_size = 100
@@ -424,7 +425,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_0initialisation_poor_24_4_4.pth"))
+    model.load_state_dict(torch.load("STPMNIST_ufirst_48_8_28.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -462,25 +463,41 @@ if __name__ == '__main__':
 
     # 1) Plotting the heatmaps of the dynamic variables and their histograms 
     ax = sns.heatmap(1/z_x)
-    plt.title("2D Heat map of z_x")
+    plt.title(r"2D Heat map of $\tau_x$")
+    ax.set(xticklabels=[])
+    ax.set(yticklabels=[])
+    ax.tick_params(left=False, bottom=False)
+    plt.xlabel("Post synaptic index")
+    plt.ylabel("Pre synaptic index")
     plt.show()
 
-    plt.hist(1/z_x, bins="auto")
-    plt.show()
+    #plt.hist(1/z_x, bins="auto")
+    #plt.show()
 
     ax = sns.heatmap(1/z_u)
-    plt.title("2D Heat map of z_u")
+    plt.title(r"2D Heat map of $\tau_u$")
+    ax.set(xticklabels=[])
+    ax.set(yticklabels=[])
+    ax.tick_params(left=False, bottom=False)
+    plt.xlabel("Post synaptic index")
+    plt.ylabel("Pre synaptic index")
     plt.show()
 
-    plt.hist(1/z_u, bins="auto")
-    plt.show()
+    #plt.hist(1/z_u, bins="auto")
+    #plt.show()
 
-    ax = sns.heatmap(1/U)
+    ax = sns.heatmap(U)
+    plt.title(r"2D Heat map of $U$")
+    ax.set(xticklabels=[])
+    ax.set(yticklabels=[])
+    ax.tick_params(left=False, bottom=False)
+    plt.xlabel("Post synaptic index")
+    plt.ylabel("Pre synaptic index")
     plt.title("2D Heat map of U")
     plt.show()
 
-    plt.hist(1/U, bins="auto")
-    plt.show()
+    #plt.hist(1/U, bins="auto")
+    #plt.show()
 
     ax = sns.heatmap(w)
     plt.title("Heat map of w")
@@ -512,33 +529,43 @@ if __name__ == '__main__':
     plt.show()'''
 
     # 4) Scatter plots of dynamic variables against each other for a single synapse using DataFrame 
-    dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), '1/U': tau_U.flatten()})
+    dataset = pd.DataFrame({'1/z_x': tau_x.flatten(), '1/z_u': tau_u.flatten(), 'U': U.flatten(), 'w': w.flatten()})
     display(dataset)
+    
+    sns.scatterplot(dataset, x='w', y='1/z_u')
+    plt.xlabel(r'w')
+    plt.ylabel(r'$\tau_u$')
+    plt.show()
+
+    sns.scatterplot(dataset, x='w', y='1/z_x')
+    plt.xlabel(r'w')
+    plt.ylabel(r'$\tau_x$')
+    plt.show()
 
     sns.scatterplot(dataset, x='1/z_x', y='1/z_u')
-    plt.xlabel('1/z_x')
-    plt.ylabel('1/z_u')
+    plt.xlabel(r'$\tau_x$')
+    plt.ylabel(r'$\tau_u$')
     plt.show()
 
-    sns.scatterplot(dataset, x='1/z_x', y='1/U')
-    plt.xlabel('1/z_x')
-    plt.ylabel('1/U')
+    sns.scatterplot(dataset, x='1/z_x', y='U')
+    plt.xlabel(r'$\tau_x$')
+    plt.ylabel('U')
     plt.show()
 
-    sns.scatterplot(dataset, x='1/z_u', y='1/U')
-    plt.xlabel('1/z_u')
-    plt.ylabel('1/U')
+    sns.scatterplot(dataset, x='1/z_u', y='U')
+    plt.xlabel(r'$\tau_u$')
+    plt.ylabel('U')
     plt.show()
 
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     x = dataset['1/z_x']
     y = dataset['1/z_u']
-    z = dataset['1/U']
+    z = dataset['U']
     ax.scatter(x,y,z)
     ax.set_xlabel('1/z_x')
     ax.set_ylabel('1/z_u')
-    ax.set_zlabel('1/U')
+    ax.set_zlabel('U')
     plt.show()
 
     # 5) Plotting the weights of the last linear layer 
