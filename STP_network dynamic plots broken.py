@@ -50,10 +50,10 @@ class STPCell(nn.Module):
         sigmoid = nn.Sigmoid() 
         self.ones = torch.ones(self.hidden_size, self.hidden_size)
         self.batch_size = batch_size 
-        self.forprintingX = [1]
+        self.forprintingX = [1,]
         self.forprintingU = [0.9]
         self.forprintingh = [0]
-    
+
         if self.complexity == "rich":
             # System variables 
             self.e_h = e_h
@@ -139,15 +139,6 @@ class STPCell(nn.Module):
             self.h_t = torch.transpose(self.h_t, 0, 1)
             x = torch.transpose(x, 0, 1)
             sigmoid = nn.Sigmoid()
-            
-            # graph plotting 
-            '''self.forprintingX.append(self.X[20,11,24].item())
-            self.forprintingU.append(self.U[20,11,24].item())
-            self.forprintingh.append(self.h_t[11, 20].item())
-            if len(self.forprintingX) % (196*5) == 0:
-                self.forprintingX = []
-                self.forprintingU = []
-                self.forprintingh = []'''   
 
             # Short term Depression 
             #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
@@ -158,7 +149,7 @@ class STPCell(nn.Module):
             self.Ucap = 0.9 * sigmoid(self.c_U)
             self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
             self.Ucapclone = self.Ucap.clone().detach() 
-            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
+            #self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
             self.forprintingU.append(self.U[0,post_index,pre_index].item())
 
             self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
@@ -175,8 +166,8 @@ class STPCell(nn.Module):
             x = torch.transpose(x, 0, 1)
             self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.einsum("ijk, ki  -> ji", (self.w * self.U * self.X), self.h_t) + torch.matmul(self.p, x) + self.b)
             #self.h_t = torch.matmul(self.w, self.h_t) + torch.matmul(self.p, x) + self.b
-            self.forprintingh.append(self.h_t[pre_index, 0].item())  # 1 is batch size so 0 is used
-            self.h_t = torch.transpose(self.h_t, 0, 1)
+            self.forprintingh.append(self.h_t[11, 0].item())  # 1 is batch size so 0 is used
+            #self.h_t = torch.transpose(self.h_t, 0, 1)
             return self.h_t   
 
         if self.complexity == "poor":
@@ -590,12 +581,11 @@ def evaluate_on_eight(mymodel):
         correct = 0
         total = 0
         images, labels = test_data[110]
-        plt.imshow(images.numpy()[0], cmap='gray')
-        plt.show()  
+        #plt.imshow(images.numpy()[0], cmap='gray')
+        #plt.show()  
 
         spiralimage = spiraliser(28, 28, images[0])
         indexedimage = baseindexing(timegap, input_size, 1, spiralimage)
-        print(indexedimage.size())
         images = indexedimage[None, :, :].to(device)
         #spiral 
         '''p = torch.rand(batch_size, 1, 784, input_size)
@@ -607,10 +597,9 @@ def evaluate_on_eight(mymodel):
         images = p.clone()'''
         #images = images.reshape(-1, 784, input_size).to(device)
         #labels = labels.to(device)
-        print(images.size())
         outputs = mymodel(images)
         _, predicted = torch.max(outputs.data, 1)
-        print("prediction", predicted.size())
+        print("prediction", predicted)
         total = 1
         correct = correct + (predicted == labels).sum().item()
     print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))
@@ -626,8 +615,7 @@ if __name__ == '__main__':
     batch_size = 1
     num_epochs = 2
     learning_rate = 0.01
-    post_index = 4
-    pre_index = 0
+    post_index, pre_index = [6,15]
 
     loss_func = nn.CrossEntropyLoss()
 
@@ -669,4 +657,3 @@ if __name__ == '__main__':
             plt.show()
             plt.plot(h)
             plt.show()
-            
