@@ -412,7 +412,7 @@ def evaluate(mymodel):
 if __name__ == '__main__':
     sequence_length = 28
     input_size = 8
-    hidden_size = 48
+    hidden_size = 24
     timegap = 28
     num_layers = 1
     num_classes = 10
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_ufirst_48_8_28.pth"))
+    model.load_state_dict(torch.load("STPMNIST_ufirst_24_8_28.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -461,14 +461,17 @@ if __name__ == '__main__':
     tau_u = 1/z_u
     tau_U = 1/U 
 
+    plt.rcParams['axes.spines.right'] = False
+    plt.rcParams['axes.spines.top'] = False
+
     # 1) Plotting the heatmaps of the dynamic variables and their histograms 
     ax = sns.heatmap(1/z_x)
     plt.title(r"2D Heat map of $\tau_x$")
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
-    plt.xlabel("Post synaptic index")
-    plt.ylabel("Pre synaptic index")
+    plt.xlabel("Post-synaptic index")
+    plt.ylabel("Pre-synaptic index")
     plt.show()
 
     #plt.hist(1/z_x, bins="auto")
@@ -479,8 +482,8 @@ if __name__ == '__main__':
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
-    plt.xlabel("Post synaptic index")
-    plt.ylabel("Pre synaptic index")
+    plt.xlabel("Post-synaptic index")
+    plt.ylabel("Pre-synaptic index")
     plt.show()
 
     #plt.hist(1/z_u, bins="auto")
@@ -491,8 +494,8 @@ if __name__ == '__main__':
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
-    plt.xlabel("Post synaptic index")
-    plt.ylabel("Pre synaptic index")
+    plt.xlabel("Post-synaptic index")
+    plt.ylabel("Pre-synaptic index")
     plt.title("2D Heat map of U")
     plt.show()
 
@@ -501,6 +504,11 @@ if __name__ == '__main__':
 
     ax = sns.heatmap(w)
     plt.title("Heat map of w")
+    ax.set(xticklabels=[])
+    ax.set(yticklabels=[])
+    ax.tick_params(left=False, bottom=False)
+    plt.xlabel("Post-synaptic index")
+    plt.ylabel("Pre-synaptic index")
     plt.show()
     
     ax = sns.heatmap(p)
@@ -518,10 +526,10 @@ if __name__ == '__main__':
     plt.show()'''
 
     # 3) This first plot plots w against 1/z_u, shows excitatory and inhibitory neurons and their STP facilitation time constants 
-    plt.scatter(w, 1/z_u)
+    '''plt.scatter(w, 1/z_u)
     plt.xlabel("w")
-    plt.ylabel("1/z_u")
-    plt.show()
+    plt.ylabel(r"2D Heat map of $\tau_u$")
+    plt.show()'''
 
     '''plt.scatter(1/z_x, 1/z_u)
     plt.xlabel("1/z_x")
@@ -535,26 +543,31 @@ if __name__ == '__main__':
     sns.scatterplot(dataset, x='w', y='1/z_u')
     plt.xlabel(r'w')
     plt.ylabel(r'$\tau_u$')
+    plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='w', y='1/z_x')
     plt.xlabel(r'w')
     plt.ylabel(r'$\tau_x$')
+    plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_x', y='1/z_u')
     plt.xlabel(r'$\tau_x$')
     plt.ylabel(r'$\tau_u$')
+    plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_x', y='U')
     plt.xlabel(r'$\tau_x$')
     plt.ylabel('U')
+    plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_u', y='U')
     plt.xlabel(r'$\tau_u$')
     plt.ylabel('U')
+    plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     fig = plt.figure()
