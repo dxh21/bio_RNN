@@ -222,6 +222,181 @@ class STPCell(nn.Module):
             self.h_t = torch.transpose(self.h_t, 0, 1)
             return self.h_t
 
+class STPCelldynamicz(nn.Module):
+    def __init__(self, input_size, hidden_size, complexity, e_h, alpha):
+        super(STPCelldynamicz, self).__init__()
+        self.input_size = input_size        
+        self.hidden_size = hidden_size
+        self.complexity = complexity 
+        sigmoid = nn.Sigmoid() 
+        self.ones = torch.ones(self.hidden_size, self.hidden_size)
+        self.batch_size = batch_size 
+        self.forprintingX = []
+        self.forprintingU = []
+        self.forprintingh = []
+
+        if self.complexity == "rich":
+            # System variables 
+            self.e_h = e_h
+
+            # Short term Plasticity variables 
+            self.delta_t = 1
+            self.alpha = alpha
+            self.e_ux = self.alpha * self.e_h
+            self.z_min = 0.001
+            self.z_max = 0.1
+
+            # Short term Depression parameters  
+            self.c_x = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+
+            # Short term Facilitation parameters
+            self.c_u = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+            self.c_U = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+            
+            # System parameters            
+            self.w = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+            self.p = torch.nn.Parameter(torch.rand(self.hidden_size, self.input_size))  
+            self.b = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            self.scalar_alpha = torch.nn.Parameter(torch.ones(1))
+            self.scalar_beta = torch.nn.Parameter(torch.ones(1))
+            self.b_z = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            
+            # State initialisations
+            self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
+            self.X = torch.ones(self.hidden_size, self.hidden_size, dtype=torch.float32)     
+            self.U = torch.full((self.hidden_size, self.hidden_size), 0.99, dtype=torch.float32)         
+            self.Ucap = 0.99 * sigmoid(self.c_U)
+            self.Ucapclone = self.Ucap.clone().detach()
+
+        if self.complexity == "poor":
+            # System variables 
+            self.e_h = e_h
+
+            # Short term Plasticity variables 
+            self.delta_t = 1
+            self.alpha = alpha
+            self.e_ux = self.alpha * self.e_h
+            self.z_min = 0.001
+            self.z_max = 0.1
+
+            # Short term Depression parameters  
+            self.c_x = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+
+            # Short term Facilitation parameters
+            self.c_u = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            self.c_U = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            
+            # System parameters
+            self.w = torch.nn.Parameter(torch.rand(self.hidden_size, self.hidden_size))
+            self.p = torch.nn.Parameter(torch.rand(self.hidden_size, self.input_size))
+            self.b = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            self.scalar_alpha = torch.nn.Parameter(torch.ones(1))
+            self.scalar_beta = torch.nn.Parameter(torch.ones(1))
+            self.b_z = torch.nn.Parameter(torch.rand(self.hidden_size, 1))
+            
+            # State initialisations
+            self.h_t = torch.zeros(1, self.hidden_size, dtype=torch.float32)
+            self.X = torch.ones(self.hidden_size, 1, dtype=torch.float32)
+            self.U = torch.full((self.hidden_size, 1), 0.99, dtype=torch.float32)
+            self.Ucap = 0.99 * sigmoid(self.c_U)
+            self.Ucapclone = self.Ucap.clone().detach()
+
+        for name, param in self.named_parameters():
+            #print(name, param.size(), param)
+            nn.init.uniform_(param, a=-(1/math.sqrt(self.hidden_size)), b=(1/math.sqrt(self.hidden_size)))
+            if name == "c_x":
+                nn.init.zeros_(param)
+            if name == "c_u":
+                nn.init.zeros_(param)
+            if name == "c_U":
+                nn.init.constant_(param, 2.0) 
+            if name == "p":
+                nn.init.uniform_(param, a=-(1/math.sqrt(self.input_size)), b=(1/math.sqrt(self.input_size)))     
+            if name == "b": 
+                nn.init.uniform_(param, a=-1, b=1)
+
+    def forward(self, x):                    
+        if self.complexity == "rich":
+            if self.h_t.dim() == 3:
+                self.h_t = self.h_t[0]
+            self.h_t = torch.transpose(self.h_t, 0, 1)
+            x = torch.transpose(x, 0, 1)
+            sigmoid = nn.Sigmoid()
+            
+            # graph plotting 
+            '''self.forprintingX.append(self.X[20,11,24].item())
+            self.forprintingU.append(self.U[20,11,24].item())
+            self.forprintingh.append(self.h_t[11, 20].item())
+            if len(self.forprintingX) % (196*5) == 0:
+                self.forprintingX = []
+                self.forprintingU = []
+                self.forprintingh = []'''   
+
+            # Short term Depression 
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+
+            # Short term Facilitation 
+            self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
+            self.Ucap = 0.99 * sigmoid(self.c_U)
+            self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * torch.einsum("ijk, ji  -> ijk", (1 - self.U), self.h_t)
+            self.Ucapclone = self.Ucap.clone().detach() 
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(self.batch_size, 1, 1), max=torch.ones_like(self.Ucapclone.repeat(self.batch_size, 1, 1)))
+            
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * torch.einsum("ijk, ji  -> ijk", self.X, self.h_t)
+
+            # System Equations 
+            #self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h) 
+            #self.absolute_w = torch.abs(self.w.repeat(self.batch_size, 1, 1))
+            self.absolute_w = torch.abs(self.w)
+            self.absolute_p = torch.abs(self.p)
+            x = torch.transpose(x, 0, 1)
+            self.z_h = sigmoid(self.scalar_alpha * torch.matmul(self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
+            #self.z_h = sigmoid(self.scalar_alpha * torch.einsum("ijk, ki -> ji", self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
+            self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.einsum("ijk, ki  -> ji", (self.w * self.U * self.X), self.h_t) + torch.matmul(self.p, x) + self.b)
+            self.h_t = torch.transpose(self.h_t, 0, 1)
+            return self.h_t   
+
+        if self.complexity == "poor":
+            if self.h_t.dim() == 3:
+                self.h_t = self.h_t[0]
+            self.h_t = torch.transpose(self.h_t, 0, 1)
+            x = torch.transpose(x, 0, 1)
+            sigmoid = nn.Sigmoid()
+            
+            # Short term Depression 
+            #self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            #self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
+
+            # Short term Facilitation 
+            self.z_u = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_u)    
+            self.Ucap = 0.99 * sigmoid(self.c_U)
+            self.U = self.Ucap * self.z_u + torch.mul((1 - self.z_u), self.U) + self.delta_t * self.Ucap * (1 - self.U) * self.h_t
+            self.Ucapclone = self.Ucap.clone().detach()
+            self.U = torch.clamp(self.U, min=self.Ucapclone.repeat(1, x.size(0)).to(device), max=torch.ones_like(self.Ucapclone.repeat(1, x.size(0)).to(device)))
+
+            self.z_x = self.z_min + (self.z_max - self.z_min) * sigmoid(self.c_x)
+            self.X = self.z_x + torch.mul((1 - self.z_x), self.X) - self.delta_t * self.U * self.X * self.h_t
+
+            # graph plotting 
+            '''self.forprintingX.append(self.X[20,5].item())
+            self.forprintingU.append(self.U[20,5].item())
+            if len(self.forprintingX) % 140 == 0:
+                self.forprintingX = []
+                self.forprintingU = []'''
+
+            # System Equations 
+            #self.z_h = 0.01 + (self.e_h-0.01) * sigmoid(self.c_h)
+            self.absolute_w = torch.abs(self.w)
+            self.absolute_p = torch.abs(self.p)
+            x = torch.transpose(x, 0, 1)
+            self.z_h = sigmoid(self.scalar_alpha * torch.matmul(self.absolute_w, self.h_t) + self.scalar_beta * torch.matmul(self.absolute_p, x) + self.b_z)
+            self.h_t = torch.mul((1 - self.z_h), self.h_t) + self.z_h * sigmoid(torch.matmul(self.w, (self.U * self.X * self.h_t)) + torch.matmul(self.p, x) + self.b)
+            #self.h_t = torch.matmul(self.w, self.h_t) + torch.matmul(self.p, x) + self.b
+            self.h_t = torch.transpose(self.h_t, 0, 1)
+            return self.h_t
+
 class STP(nn.Module):
     def __init__(self, input_size, hidden_size, complexity, e_h, alpha): 
         super(STP, self).__init__()
@@ -411,8 +586,8 @@ def evaluate(mymodel):
 
 if __name__ == '__main__':
     sequence_length = 28
-    input_size = 4
-    hidden_size = 48
+    input_size = 8
+    hidden_size = 24
     timegap = 1
     num_layers = 1
     num_classes = 10
@@ -425,7 +600,7 @@ if __name__ == '__main__':
     from torch import optim
 
     model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
-    model.load_state_dict(torch.load("STPMNIST_ufirst_48_4_4.pth"))
+    model.load_state_dict(torch.load("STPMNIST_ufirst_24_8_28.pth"))
 
     def sigmoid(x):
         for n in x: 
@@ -466,7 +641,7 @@ if __name__ == '__main__':
 
     # 1) Plotting the heatmaps of the dynamic variables and their histograms 
     ax = sns.heatmap(1/z_x)
-    plt.title(r"2D Heat map of $\tau_x$")
+    plt.title(r"2D Heat map of $\tau_D$")
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
@@ -474,11 +649,12 @@ if __name__ == '__main__':
     plt.ylabel("Pre-synaptic index")
     plt.show()
 
-    #plt.hist(1/z_x, bins="auto")
-    #plt.show()
+    plt.hist(tau_x.ravel(), bins=16)
+    plt.xlabel(r"$\tau_D$")
+    plt.show()
 
     ax = sns.heatmap(1/z_u)
-    plt.title(r"2D Heat map of $\tau_u$")
+    plt.title(r"2D Heat map of $\tau_F$")
     ax.set(xticklabels=[])
     ax.set(yticklabels=[])
     ax.tick_params(left=False, bottom=False)
@@ -486,8 +662,9 @@ if __name__ == '__main__':
     plt.ylabel("Pre-synaptic index")
     plt.show()
 
-    #plt.hist(1/z_u, bins="auto")
-    #plt.show()
+    plt.hist(tau_u.ravel(), bins=16)
+    plt.xlabel(r"$\tau_F$")
+    plt.show()
 
     ax = sns.heatmap(U)
     plt.title(r"2D Heat map of $U$")
@@ -499,8 +676,10 @@ if __name__ == '__main__':
     plt.title("2D Heat map of U")
     plt.show()
 
-    #plt.hist(1/U, bins="auto")
-    #plt.show()
+    plt.hist(U.ravel(), bins=16)
+    plt.xlabel(r"U")
+    plt.show()
+
 
     ax = sns.heatmap(w)
     plt.title("2D Heat map of w")
@@ -542,30 +721,30 @@ if __name__ == '__main__':
     
     sns.scatterplot(dataset, x='w', y='1/z_u')
     plt.xlabel(r'w')
-    plt.ylabel(r'$\tau_u$')
+    plt.ylabel(r'$\tau_F$')
     plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='w', y='1/z_x')
     plt.xlabel(r'w')
-    plt.ylabel(r'$\tau_x$')
+    plt.ylabel(r'$\tau_D$')
     plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_x', y='1/z_u')
-    plt.xlabel(r'$\tau_x$')
-    plt.ylabel(r'$\tau_u$')
+    plt.xlabel(r'$\tau_D$')
+    plt.ylabel(r'$\tau_F$')
     plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_x', y='U')
-    plt.xlabel(r'$\tau_x$')
+    plt.xlabel(r'$\tau_D$')
     plt.ylabel('U')
     plt.subplots_adjust(bottom=0.4)
     plt.show()
 
     sns.scatterplot(dataset, x='1/z_u', y='U')
-    plt.xlabel(r'$\tau_u$')
+    plt.xlabel(r'$\tau_F$')
     plt.ylabel('U')
     plt.subplots_adjust(bottom=0.4)
     plt.show()
@@ -601,3 +780,8 @@ if __name__ == '__main__':
     plt.xlabel("Magnitude of input weights")
     plt.ylabel("Magnitude of output weights")
     plt.show()
+
+
+    # ---------------------------------------------------------------------------------
+    # Neuronal plots 
+

@@ -31,7 +31,7 @@ hidden48_vanilla = [40.47, 45.38, 39.67, 38.66, 36.26, 55.24, 45.69, 75.48, 66.4
 hidden48_neuronal_STPN = [50.92, 55.08, 69.37, 54.98, 61.06, 79.86, 60.98, 75.68, 83.99]
 hidden48_synaptic_STPN = [39.02, 57.07, 75.73, 54.60, 63.54, 80.04, 61.83, 78.21, 86.37]
 hidden48_neuronal_STPN_dynamicz = [55.22, 55.0, 68.72, 56.54, 62.54, 78.15, 62.17, 77.54, 86.79]
-#hidden48_synaptic_STPN_dynamicz = 
+hidden48_synaptic_STPN_dynamicz = [55.41, 50.48, 73.79, 48.35, 63.93, 77.67, 62.76, 77.40, 84.26]
 hidden48_bio_GRU = [60.15, 64.32, 79.66, 60.23, 69.53, 86.15, 67.03, 77.93, 88.46]
 hidden48_simple_GRU = [83.83, 65.31, 89.68, 83.48, 85.72, 94.07, 85.78, 73.16, 85.91]
 
@@ -51,9 +51,9 @@ plt.plot(a, hidden24_synaptic_STPN_dynamicz)
 #plt.plot(a,hidden48_neuronal_STPN, 'pink')
 #plt.plot(a,hidden48_synaptic_STPN, 'red')
 #plt.plot(a,hidden48_bio_GRU, 'green')
-plt.legend(['Vanilla RNN', 'Neuronal STPN', 'Synaptic STPN', 'Bio GRU', 'Simple GRU', 'GRU', 'Bio Neuronal STPN', 'Bio Synaptic STPN'], prop={'size': 20})
+plt.legend(['Vanilla RNN', 'Neuronal STPN', 'Synaptic STPN', 'Conductance GRU', 'Simple GRU', 'GRU'], prop={'size': 20})
 plt.ylabel('Test accuracies %')
-plt.show()
+#plt.show()
 
 my_xticks = ['4_1','4_4','4_28','8_1', '8_4', '8_28', '16_1', '16_4', '16_28']
 plt.xticks(a, my_xticks)
@@ -63,6 +63,34 @@ plt.plot(a,hidden48_synaptic_STPN)#, 'red')
 plt.plot(a,hidden48_bio_GRU)#, 'green')
 plt.plot(a,hidden48_simple_GRU)#, 'green')
 plt.plot(a,hidden24_GRU)#, 'black')
-plt.legend(['Vanilla RNN', 'Neuronal STPN', 'Synaptic STPN', 'Bio GRU', 'Simple GRU', 'GRU (hidden size 24)'], prop={'size': 20})
+plt.legend(['Vanilla RNN', 'Neuronal STPN', 'Synaptic STPN', 'Conductance GRU', 'Simple GRU', 'GRU (hidden size 24)'], prop={'size': 20})
+plt.ylabel('Test accuracies %')
+#plt.show()
+
+my_xticks = ['4_1','4_4','4_28','8_1', '8_4', '8_28', '16_1', '16_4', '16_28']
+plt.xticks(a, my_xticks)
+'''plt.plot(a,hidden24_neuronal_STPN)#, 'green')
+plt.plot(a,hidden24_synaptic_STPN)#, 'green')
+plt.plot(a,hidden24_neuronal_STPN_dynamicz)#, 'black')
+plt.plot(a,hidden24_synaptic_STPN_dynamicz)#, 'pink')'''
+plt.plot(a,hidden48_neuronal_STPN)#, 'red')
+plt.plot(a,hidden48_synaptic_STPN)
+plt.plot(a,hidden48_neuronal_STPN_dynamicz)
+plt.plot(a,hidden48_synaptic_STPN_dynamicz)
+plt.plot(a,hidden48_bio_GRU)#, 'green')
+#plt.legend(['Neuronal STPN (24)', 'Synaptic STPN (24)', 'Neuronal Conductance STPN (24)', 'Synaptic Conductance STPN (24)', 'Neuronal STPN (48)', 'Synaptic STPN (48)', 'Neuronal Conductance STPN (48)', 'Synaptic Conductance STPN (48)'], prop={'size': 15})
+plt.legend(['Neuronal STPN (48)', 'Synaptic STPN (48)', 'Neuronal Conductance STPN (48)', 'Synaptic Conductance STPN (48)', 'Conductance GRU (48)'], prop={'size': 20})
+plt.ylabel('Test accuracies %')
+plt.show()
+print("Look here", a[6:])
+b = [1,2,3]
+my_xticks2 = ['1','4','28']
+plt.xticks(b, my_xticks2)
+plt.plot(b, hidden24_vanilla[6:])
+plt.plot(b, hidden24_simple_GRU[6:])
+plt.plot(b, hidden24_GRU[6:])
+plt.plot(b, hidden24_synaptic_STPN[6:])
+plt.legend((['Vanilla', 'Simple GRU', 'GRU', 'STPN']))
+plt.xlabel('Time gap')
 plt.ylabel('Test accuracies %')
 plt.show()

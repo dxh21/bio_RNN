@@ -626,8 +626,8 @@ if __name__ == '__main__':
     batch_size = 1
     num_epochs = 2
     learning_rate = 0.01
-    post_index = 4
-    pre_index = 0
+    post_index = 19
+    pre_index = 9
 
     loss_func = nn.CrossEntropyLoss()
 
@@ -657,16 +657,40 @@ if __name__ == '__main__':
 
             sigmoid = nn.Sigmoid()
 
+            z_x = model.lstm.stpcell.z_min + (model.lstm.stpcell.z_max - model.lstm.stpcell.z_min) * sigmoid(model.lstm.stpcell.c_x)
+            z_x = z_x.cpu().detach().numpy()
+
+            z_u = model.lstm.stpcell.z_min + (model.lstm.stpcell.z_max - model.lstm.stpcell.z_min) * sigmoid(model.lstm.stpcell.c_u)
+            z_u = z_u.cpu().detach().numpy()
+
+            tau_D = 1/(z_x[post_index, pre_index])
+            tau_F = 1/(z_u[post_index, pre_index])
+            print("tau_D:", tau_D)
+            print("tau_F:", tau_F)
+
             U = 0.9 * sigmoid(model.lstm.stpcell.c_U)
             U = U.cpu().detach().numpy()
 
             plt.rcParams['axes.spines.right'] = False
             plt.rcParams['axes.spines.top'] = False
-            plt.plot(x)
-            plt.show()
-            plt.plot(u)
-            plt.axhline(y=U[post_index,pre_index], color='r', linestyle='-')
-            plt.show()
             plt.plot(h)
+            plt.plot(x)
+            #plt.show()
+            plt.plot(u)
+            plt.axhline(y=U[post_index,pre_index], color='black', linestyle='-')
+            #plt.show()
+            plt.legend([""])
+            plt.legend([r'$h_t$', r'$x_t$', r'$u_t$'], prop={'size': 20})
+            plt.xlabel('Time-step')
             plt.show()
             
+            plt.plot(h)
+            plt.xlabel('Time-step')
+            plt.show()
+            plt.plot(x)
+            plt.xlabel('Time-step')
+            plt.show()
+            plt.plot(u)
+            plt.axhline(y=U[post_index,pre_index], color='black', linestyle='-')
+            plt.xlabel('Time-step')
+            plt.show()
